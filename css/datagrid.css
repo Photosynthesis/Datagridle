@@ -1,0 +1,293 @@
+/* CSS for non table-specific stuff */
+
+body{
+  font-family: arial;
+  color:color: #449977;
+}
+
+
+h1{
+  font-family: arial;
+  font-size: 20px;
+  color: #999999;
+}
+
+h2{
+  font-family: arial;
+  font-size: 17px;
+  color: #002244;
+}
+
+
+
+button.query{
+  margin: 10px 2px 0px 2px;
+  background-color: #eeffee;
+  border: 1px solid #999999;
+  float:left;
+  clear: right;
+}
+
+
+#header{
+  background-color: #eeeeee;
+}
+
+#dtlsgridbg{
+  border: 1px solid #cccccc;
+  padding: 10px;
+  background-color:#f4efdd;
+}
+
+
+/* For the delete and update buttons */
+
+#dg_edit_buttons{
+  width:95px;
+}
+
+#dg_edit_buttons input{
+  margin:2px;
+  padding: 1px;
+  border: 1px solid #999999;
+  float: left;
+}
+input.update{
+  background-color: #ffffff;
+}
+
+input.delete{
+  background-color: #eeccbb;
+}
+
+input.copy{
+  background-color: #bbffbb;
+  padding-top: -2px;
+  font-family: arial;
+  line-height: 12px;
+  padding: 0px;
+}
+
+input.update:hover{
+  background-color: #aabbee;
+}
+input.delete:hover{
+  background-color: red;
+}
+input.copy:hover{
+  background-color: #449944;
+}
+
+
+/* Table display styles */ 
+td.dataheader, td.dataheadersort{
+  padding: 0px;
+}
+a.dataheader, a.dataheadersort{
+  padding: 1px 3px 1px 3px;
+  font-weight: bold;
+  display:block;
+  font-family: arial;
+  text-decoration: none;
+  text-align: center;
+}
+a.dataheader{
+  color: #556699;
+  background-color:#EBEADB;
+  border-bottom: 2px solid #dd9933;
+}
+
+a.dataheader:hover{
+  background-color:#cBcAdB;
+  color: #ffffff;
+}
+a.dataheadersort{
+  border-bottom: 2px solid red;
+  background-color:#EBEADB;
+  color: #000000;
+}
+span.dataheader{
+  padding: 1px 3px 1px 3px;
+  display:block;
+  color: #556699;
+  font-family: arial;
+  font-weight: bold;
+  text-decoration: none;
+  text-align: center;
+  background-color:#EBEADB;
+  border-bottom: 2px solid #dd9933;
+}
+span.help{
+  cursor: help;
+  border-bottom: 1px dotted #44bb55;
+}
+table.datatable{
+  background-color: #ffffff;
+  font-size: 13px;
+}
+td.datafield{
+  padding: 3 8 3 8px;
+}
+
+.datafield2{
+  background-color: #faf5ed;
+}
+tr.datafield1:hover, tr.datafield2:hover{
+  background-color: #caf5cd;
+  border: 1px solid black;
+}
+
+.hidefield{
+  font-family: arial;
+  margin-top: 1px;
+  display: block;
+  background-color: #ccddee;
+  font-weight:bold;
+  font-size: 11px;
+  text-align: center;
+  text-decoration: none;
+}
+
+
+
+/* Update, edit, add form styles */ 
+#edit_form input, #edit_form select, #edit_form textarea{
+  background-color: #eeffee;
+  border: 1px solid #999999;
+  clear: right;
+  margin-top: 0px;
+  float:left;
+}
+
+#edit_form input{
+  width: 400px;
+}
+
+#edit_form textarea{
+  width: 190px;
+  height: 90px;
+}
+
+#edit_form button{
+  margin-left: 20px;
+  float:left;
+  padding: 1px 15px 1px 15px;
+}
+
+#edit_form .label,#edit_form .readonly{
+  display: block;
+  margin-top: 0px;
+  float: left;
+}
+
+#edit_form .label{
+  width: 120px;
+  clear: left;
+}
+
+#edit_form .maxlength{
+  font-size: 11px;
+  font-style: italic;
+}
+
+div.fielddiv{
+  border: 1px solid #cccccc;
+  margin: 5px;
+  padding: 10px 5px 5px 5px;
+}
+
+div.fielddiv table{
+float: left;
+}
+
+.edit_note{
+  margin-left: 10px;
+  font-family: arial;
+  color: #777777;
+  clear: right;
+  float:left;
+/*background-color: #efefef;*/
+}
+
+
+/* Display page forms: add, query, etc. */
+
+form.update{
+  display: inline;
+}
+
+input.query, select.query{
+  margin: 10px 2px 0px 2px;
+  background-color:#eeeeee;
+}
+
+input.dg_add{
+  background-color:#ccffcc;
+  border: 1px solid #999999;
+  margin: 0px;
+  float:none
+}
+
+button.dg_add:hover{
+  background-color: #44cc88;
+  margin: 0px;
+}
+
+.querybox{
+  margin-top: 20px;
+  background-color: #fcfcfc;
+  border: 1px solid #cccccc;
+  padding-left: 10px;
+}
+
+
+#feedback{
+  margin: 10px;
+  color: #000000;
+  font-size: 13px;
+  text-align: center;
+  font-weight: bold;
+  padding: 8px;
+  border: 2px solid #aabbcc;
+  background-color: #ccddee;
+}
+
+#feedback .error{
+  background-color: orange;
+  border: 2px solid red;
+}
+
+#feedback .notice{
+  border: 2px solid #aabbcc;
+  background-color: #ccddee;
+}
+
+
+.edit_child_cell_inactive{
+  padding: 3 8 3 8px;
+  background-color: #f4efdd;
+  cursor: pointer;
+}
+
+.edit_child_cell_active{
+  padding: 3 8 3 8px;
+  background-color: #8899aa;
+  cursor: pointer;
+}
+
+#close_window_button{
+  width: 100px;
+  border: 1px solid #dd9988;
+  background-color: #ffeedd;
+  padding: 3px;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #885555;
+  cursor: pointer;
+  text-align: center;
+}
+
+#close_window_button: hover{
+
+}

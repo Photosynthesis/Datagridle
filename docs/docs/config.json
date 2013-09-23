@@ -1,0 +1,18 @@
+{
+    "float": false,
+    "title": "Documentation",
+    "tagline": "Ultra-rapid PHP data content editing module",
+    "theme": "custom",
+    "colors": {
+        "sidebar-background": "#f7f7f7",
+        "sidebar-hover": "#c5c5cb",
+        "lines": "#e7e7e9",
+        "dark": "#447799",
+        "light": "#cccccc",
+        "text": "#2d2d2d",
+        "syntax-string": "#022e99",
+        "syntax-comment": "#84989b",
+        "syntax-number": "#2f9b92",
+        "syntax-label": "#840d7a"
+    }
+}
