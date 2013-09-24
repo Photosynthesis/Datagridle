@@ -2,7 +2,7 @@
 include_once('../datagrid.class.php');
 
 
-$grid = new datagrid('posts',array('db'=>'dg_test','host'=>'localhost','user'=>'root','pass' => ''));
+$grid = new datagrid('posts',array('db'=>'dg_test','host'=>'localhost','user'=>'db_user','pass' => 'db_pass'));
 
 // Truncate the grid display of this field
 $grid->set_field_attrib('posts','content','truncate','10');
