@@ -932,7 +932,7 @@ function sort(){
       $trend = '
       </tr>';
 
-      $out .= '<table class="datatable"><tr><td valign="bottom">';
+      $out .= '<table class="datatable"><tr><td class="add_button" valign="bottom">';
       
       if(strpos($this->settings['privileges'],'add') !== false){
         $out .= $this->add_button();
@@ -961,12 +961,12 @@ function sort(){
                 if($fieldattribs['type'] != 'derivative'){
                   $columnhead = "<td class=\"$headclass\" valign=\"bottom\">
                   <a class=\"$headclass\" href=\"".$this->target_url->get($this->GET_pfx()."sorttable=$table&".$this->GET_pfx()."sortfield=$field&".$this->GET_pfx()."sorttype=$new_sort")."\">$fieldattribs[title]</a>
-                  <a class=\"hidefield\" href=\"".$this->target_url->get($this->GET_pfx()."hide_field=$fid")."\">>hide<</a></td>";
+                  <a class=\"hidefield\" href=\"".$this->target_url->get($this->GET_pfx()."hide_field=$fid")."\">&raquo; hide &laquo;</a></td>";
                 }else{
                   $columnhead = "
                   <td class=\"$headclass\" valign=\"bottom\">
                   <span class=\"$headclass\">$fieldattribs[title]</span>
-                  <a class=\"hidefield\" href=\"".$this->target_url->get().$this->GET_pfx()."hide_field=$fid\">>hide<</a>
+                  <a class=\"hidefield\" href=\"".$this->target_url->get().$this->GET_pfx()."hide_field=$fid\">&raquo; hide &laquo;</a>
                   </td>";
                 }
                 $out .= $columnhead;
@@ -1142,7 +1142,7 @@ function sort(){
       $out .= $this->target_url->get_hidden_inputs();
       $out .= "
       <input type=\"hidden\" name=\"".$this->GET_pfx()."action\" value=\"copy\" />
-      <input type=\"submit\" value=\"+\" class=\"copy\">
+      <input type=\"submit\" value=\"c\" class=\"icon-new copy\" />
       $keyinput
       </form>
       ";
@@ -1154,7 +1154,7 @@ function sort(){
       $out .= $this->target_url->get_hidden_inputs();
       $out .= "
       <input type=\"hidden\" name=\"".$this->GET_pfx()."action\" value=\"edit\" />
-      <input type=\"submit\" value=\"Edit\" class=\"update\"> 
+      <input type=\"submit\" value=\"a\" class=\"update icon-edit\"> 
       $keyinput
       </form>
       ";
@@ -1166,7 +1166,7 @@ function sort(){
       $out .= "
       <input type=\"hidden\" name=\"".$this->GET_pfx()."action\" value=\"delete\" />
       $keyinput
-      <input type=\"submit\" value=\"Del\" class=\"delete\" onClick=\"return confirmSubmit('$id')\"/>
+      <input type=\"submit\" value=\"b\" class=\"delete icon-delete\" onClick=\"return confirmSubmit('$id')\"/>
       </form>";
     }
     
@@ -1176,11 +1176,11 @@ function sort(){
 
   function start_row($keyval,$oddrow){
     if($oddrow == 1){
-      $bg = 'f4efdd';
+      $bg = 'fdfdfd';
     }else{
-      $bg = 'faf5ed';
+      $bg = 'f8f8f8';
     }
-  return "<tr id=\"".$this->rowcount."\" bgcolor=\"#$bg\" onClick=\"highlightRow('".$this->rowcount."','#$bg')\">";
+  return "<tr id=\"".$this->rowcount."\" cellspacing=\"0\" bgcolor=\"#$bg\" onClick=\"highlightRow('".$this->rowcount."','#$bg')\">";
   }
 
 

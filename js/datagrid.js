@@ -27,11 +27,17 @@ function submitform(){
 }
 
 function highlightRow(row_id,default_color){
-  var hlbg = '#aaddaa';
+  var hlbg = '#aaa';
+  var light = '#fff';
+  var dark = '#333';
+
   if (document.getElementById(row_id).bgColor == hlbg){
     document.getElementById(row_id).bgColor = default_color;
+    document.getElementById(row_id).style.color = dark;
+
   }else{
     document.getElementById(row_id).bgColor = hlbg;
+    document.getElementById(row_id).style.color = light;
   }
 }
 
