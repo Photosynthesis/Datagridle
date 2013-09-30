@@ -1,8 +1,9 @@
 /* CSS for non table-specific stuff */
 
 body{
-  font-family: arial;
-  color:color: #449977;
+  font-family: Ubuntu, helvetica;
+  color: #333;
+  font-size: 18px;
 }
 
 
@@ -47,64 +48,74 @@ button.query{
 }
 
 #dg_edit_buttons input{
-  margin:2px;
-  padding: 1px;
-  border: 1px solid #999999;
+  margin: 3px;
+  padding-right:5px;
+  border: none;
   float: left;
+  background: none;
+  cursor: pointer;
 }
 input.update{
-  background-color: #ffffff;
+  font-size: 1.6em !important;
+  color:#117;
 }
 
 input.delete{
-  background-color: #eeccbb;
+  color:#711;
+  
 }
 
 input.copy{
-  background-color: #bbffbb;
-  padding-top: -2px;
-  font-family: arial;
-  line-height: 12px;
-  padding: 0px;
+  color:#161;
 }
 
 input.update:hover{
-  background-color: #aabbee;
+  color: #39f;
 }
 input.delete:hover{
-  background-color: red;
+  color:red;
 }
 input.copy:hover{
-  background-color: #449944;
+ color:#0d0;
 }
 
 
 /* Table display styles */ 
 td.dataheader, td.dataheadersort{
   padding: 0px;
+  border-collapse: collapse;
 }
+
+.add_button{
+  padding-left: 0 !important;
+}
+
 a.dataheader, a.dataheadersort{
   padding: 1px 3px 1px 3px;
   font-weight: bold;
   display:block;
-  font-family: arial;
+  font-family: Ubuntu, hevetica, arial;
   text-decoration: none;
   text-align: center;
+  border-left:1px solid #ddd;
 }
 a.dataheader{
-  color: #556699;
-  background-color:#EBEADB;
-  border-bottom: 2px solid #dd9933;
+  color: #666;
+  background-color:#eee;
+  border-bottom: 2px solid #888;
+  padding:5px;  
+
 }
 
 a.dataheader:hover{
-  background-color:#cBcAdB;
+  background-color:#777;
   color: #ffffff;
 }
 a.dataheadersort{
-  border-bottom: 2px solid red;
-  background-color:#EBEADB;
-  color: #000000;
+  border-bottom: 2px solid #dd4814;
+  background-color:#888;
+  color: #ffffff;
+  padding: 5px;
 }
 span.dataheader{
   padding: 1px 3px 1px 3px;
@@ -116,6 +127,7 @@ span.dataheader{
   text-align: center;
   background-color:#EBEADB;
   border-bottom: 2px solid #dd9933;
+  border-collapse: collapse;
 }
 span.help{
   cursor: help;
@@ -124,28 +136,36 @@ span.help{
 table.datatable{
   background-color: #ffffff;
   font-size: 13px;
+  border-collapse: collapse;
 }
 td.datafield{
   padding: 3 8 3 8px;
+  border:1px solid #ddd;
+  margin:0;
 }
 
 .datafield2{
-  background-color: #faf5ed;
+  background-color: #eee;
 }
+
 tr.datafield1:hover, tr.datafield2:hover{
   background-color: #caf5cd;
   border: 1px solid black;
 }
 
 .hidefield{
-  font-family: arial;
-  margin-top: 1px;
+  font-family: Ubuntu, helvetica, arial;
   display: block;
-  background-color: #ccddee;
+  background-color: #bbb;
+  color:#fff;
+  border-collapse: collapse;
+  padding: 2px;
   font-weight:bold;
   font-size: 11px;
   text-align: center;
   text-decoration: none;
+  border-right: 1px solid #ddd;
+  /*box-shadow: 0px 5px 5px 0px gray;*/
 }
 
 
@@ -221,18 +241,33 @@ input.query, select.query{
   background-color:#eeeeee;
 }
 
-input.dg_add{
-  background-color:#ccffcc;
-  border: 1px solid #999999;
-  margin: 0px;
-  float:none
+.dg_add {
+  height: 45px;
+  width: 100%;
+  border-collapse: collapse;
+  background: #3e779d;
+  background: -webkit-gradient(linear, left top, left bottom, from(#ccc), to(#999));
+  background: -moz-linear-gradient(top,  #ccc,  #999);
+  padding: 5px 10px;
+  border-radius: 2px; 
+  border:none;
+  text-shadow: rgba(255,255,255,.4) 0 1px 0;
+  color: black;
+  font-size: 14px;
+  text-decoration: none; 
+  vertical-align: middle;
 }
-
-button.dg_add:hover{
-  background-color: #44cc88;
-  margin: 0px;
+.dg_add:hover {
+    border-top-color: #28597a;
+    background: #888;
+    color:white;
+    box-shadow: 0 0 5px 2px #666 inset;
 }
-
+.dg_add:active {
+    border-top-color: #1b435e;
+    background: #1b435e;
+    outline: 0;
+}
 .querybox{
   margin-top: 20px;
   background-color: #fcfcfc;
@@ -291,3 +326,57 @@ button.dg_add:hover{
 #close_window_button: hover{
 
 }
+
+
+/* THE ICON FONT */
+
+@charset "UTF-8";
+
+@font-face {
+  font-family: "custom-icons";
+  src:url("/common/libraries/Datagridle/fonts/custom-icons.eot");
+  src:url("/common/libraries/Datagridle/fonts/custom-icons.eot?#iefix") format("embedded-opentype"),
+    url("/common/libraries/Datagridle/fonts/custom-icons.ttf") format("truetype"),
+    url("/common/libraries/Datagridle/fonts/custom-icons.svg#custom-icons") format("svg"),
+    url("/common/libraries/Datagridle/fonts/custom-icons.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+
+}
+
+
+[class^="icon-"],
+[class*=" icon-"],
+.icon {
+  font-family: "custom-icons";
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none !important;
+  speak: none;
+  display: inline-block;
+  text-decoration: none;
+  width: 1em;
+  font-size: 1.5em;
+  line-height: 1em;
+  -webkit-font-smoothing: antialiased;
+}
+
+
+/*
+.icon-edit:before {
+  content: "a";
+}
+
+.icon-delete:before {
+  content: "b";
+}
+
+.icon-new:before {
+  content: "c";
+}
+
+.icon-search:before {
+  content: "d";
+}
+*/
