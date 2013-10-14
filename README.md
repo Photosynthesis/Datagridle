@@ -20,9 +20,10 @@ Please send bug reports and feature requests by email to adam@photosynth.ca, or 
 
 
 ####Sample usage
-
+```
 include('datagrid.class.php');
 
 $grid = new datagrid('pages');
 
 echo $grid->grid();
+```
