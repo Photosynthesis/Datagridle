@@ -30,4 +30,4 @@ echo $grid->grid();
 
 #### Documentation
 
-Full documentation can be found at: (http://photosynth.ca/code/datagridle/docs)
+Full documentation can be found [here.](http://photosynth.ca/code/datagridle/docs)
