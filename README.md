@@ -27,3 +27,7 @@ $grid = new datagrid('pages');
 
 echo $grid->grid();
 ```
+
+#### Documentation
+
+Full documentation can be found at: (http://photosynth.ca/code/datagridle/docs)
