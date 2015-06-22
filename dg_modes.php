@@ -17,7 +17,8 @@ $this->modes = array(
                     'show_dev_tools' => true,
                     'show_admin_tools' => true,
                     'show_result_counts' => true,
-                    'show_html_head' => true
+                    'show_html_head' => true,
+                    'show_reports' => true
                     ),
    'embedded' => array(
                     'show_search' => true,
@@ -26,7 +27,8 @@ $this->modes = array(
                     'show_dev_tools' => false,
                     'show_admin_toole' => false,
                     'show_result_counts' => true,
-                    'show_html_head' => false
+                    'show_html_head' => true,
+                    'redirect_file_exports' => true
                     ),
    'child' => array(
                     'show_search' => true,

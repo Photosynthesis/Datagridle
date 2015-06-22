@@ -40,9 +40,16 @@ class datagrid{
   var $tabletitle;
   var $url;
   var $redirect_url;
+  
   var $head_links = array(
-    'css' => array(),
+    'css' => array('datagrid.css'),
     'js' => array('calendarDateInput.js','jquery.js','datagrid.js'));
+    
+  var $user_head_links = array(
+    'css' => array(),
+    'js' => array()
+  );
+  
   var $dg_name;
   var $dg_display_name;
   var $ses_name;
@@ -67,8 +74,11 @@ class datagrid{
   var $db;
   var $rowcount;
   var $primary_table;
+  var $debug_level = 2;
+  var $reports = array();
 
   function __construct($dg_name,$db = NULL,$settings = NULL){
+
 
     // if $db is database object, use that;
     // else if db is string, use as database name and get credentials from config
@@ -90,11 +100,19 @@ class datagrid{
 
     $dg_abs_path = dirname(__FILE__).$ds;
 
+    $doc_root = $_SERVER['DOCUMENT_ROOT'];
+
+    $this->dg_relative_path = '/'.str_replace($doc_root,'',str_replace('\\','/',$dg_abs_path));
+    
+
     if(file_exists($working_abs_path.'dg_config.php')){
       include($working_abs_path.'dg_config.php');
     }else{
       include($dg_abs_path.'dg_config.php');
     }
+    
+    $this->secure_salt = $secure_salt;
+
 
     if(file_exists($working_abs_path.'dg_paths.php')){
       include($working_abs_path.'dg_paths.php');
@@ -167,6 +185,7 @@ class datagrid{
     
     
     if(!$structure){
+      $this->primary_table = $dg_name;
       $this->auto_detect_fields($dg_name);
     }else {
       $this->struct = $structure;
@@ -231,34 +250,168 @@ class datagrid{
     $this->set_setting('display_name',$this->setting('display_name').' for '.$child_link_field.' '.$link_value);
     $this->set_setting('default_hidden_fields',array($this->primary_table.$child_link_field));
   }
+  
+  function get_search_fields(){
+
+    if($this->setting('search_fields')){
+      $search_fields = $this->setting('search_fields');
+    }else{
+      foreach ($this->struct as $t=>$t_ats) {
+         $this->dbg("Struct[$t]['fields']",$t_ats['fields']);
+         foreach ($t_ats['fields'] as $f=>$f_ats) {
+         	 $search_fields[$t.'.'.$f] = $f_ats;
+         }
+      }
+
+    }
+    $this->dbg('Searcdh fields',$search_fields);
+    return $search_fields;
+  }
+
+  function search_tab(){
+    $search_block .= '
+    <form action="'.$this->target_url->get().'" method="GET"  style="float:left" class="search_form">
+    ';
+    $search_block .= $this->target_url->get_hidden_inputs();
+    $search_block .= '
+    <select name="'.$this->GET_pfx().'searchfield" class="search">';
+
+
+    $search_fields = $this->get_search_fields();
+
+
+    foreach ($search_fields as $field => $fieldattribs){
+        if($field == $this->searchfield || (!$this->searchfield && $fieldattribs['searchdefault'])){
+          $selected = 'selected';
+        }else{
+          $selected = '';
+        }
+        $search_block .= "<option value=\"$field\" $selected>$fieldattribs[title]</option>";
+    }
+    $search_block .= '
+    </select>
+    <select name="'.$this->GET_pfx().'searchtype" class="search">';
+    $type_options = array('includes','equals');
+    foreach ($type_options as $key=>$value){
+        if($value == $this->searchtype){
+          $selected = 'selected';
+        }else{
+          $selected = '';
+        }
+        $search_block .= "<option $selected>$value</option>";
+    }
+    $search_block .= '
+    </select>
+    <input type="text" class="search" name="'.$this->GET_pfx().'searchquery" value="'.$this->searchquery.'"/>
+    <button type="submit" style="float: none;" class="search">Search</button></form>';
+    if($this->searchtype && $this->searchfield && $this->searchquery){
+      $search_block .= '
+      <form action="'.$this->target_url->get().'" method="GET" style="float:left" class="search_form">
+      ';
+      $search_block .= $this->target_url->get_hidden_inputs();
+      $search_block .= '
+      <input type="hidden" name="'.$this->GET_pfx().'searchquery" value="showall">
+      <button type="submit" class="search" style="margin-left: 10px;">Reset</button>';
+      $search_block .= '
+      </form>';
+    }
+    $search_block .= '<br clear="all"/>';
+
+    $search_block .= '
+    </form>';
+    return $search_block;
+  }
+
+
+
+
+
+  function paging_tab(){
+
+    //Paging input
+    $paging_block .= "
+    <form action=\"".$this->target_url->get()."\" method=\"GET\"  class=\"paging_form\">
+    ";
+    $paging_block .= $this->target_url->get_hidden_inputs();
+    $paging_block .= "
+    Showing up to
+    <input type=\"text\" class=\"paging\" style=\"float: none;\" name=\"".$this->GET_pfx()."limit\" value=\"".$this->limit."\" size=\"4\">
+    items per page, starting with item
+    <input type=\"text\" name=\"".$this->GET_pfx()."start\" class=\"paging\" style=\"float: none;\" size=\"4\" value=\"".$this->start."\">
+    <button type=\"submit\" style=\"float: none\" class=\"paging\" value=\"Update\">Update</button>
+    </form>";
+    return $paging_block;
+
+  }
+
+  function grid_controls(){
+    $out = '
+<script language="javascript" type="text/javascript" src="'.$this->paths['js_path'].'jquery.idTabs.min.js"></script>
+';
+
+    $control_tabs = array(
+      'search' => "Search",
+      'paging' => "Paging",
+    );
+    
+    if(count($this->reports) > 0){
+      $control_tabs['reports'] = "Reports";
+    }
+
+    foreach ($control_tabs as $key=>$value) {
+      if($this->modes[$this->setting('mode')]['show_'.$key]){
+        $function = $key."_tab";
+        $tab_headers .= '<li><a href="#'.$key.'_tab">'.$value.'</a></li>';
+        $content = $this->$function();
+        $tabs .= '<div id="'.$key.'_tab">'.$content.'</div>';
+
+      }
+
+    }
+
+    $out .= '
+    <div id="control_tabs" class="control_tabs">
+    <ul>
+    '.$tab_headers.'
+    </ul>
+    '.$tabs.'
+    </div>
+    <script type="text/javascript">
+    $("#control_tabs ul").idTabs();
+    </script>';
+
+    return $out;
+  }
 
   function search(){
-  
-     if ($this->GET('searchquery') == 'showall'){
-     
+
+    $this->dbg('Search vars',$this->searchfield.$this->searchtype.$this->searchquery);
+
+    if ($this->GET('searchquery') == 'showall'){
+
        $this->unset_session('searchfield');
        $this->unset_session('searchquery');
        $this->unset_session('searchtype');
-       
+
        unset($this->searchsql,$this->searchquery,$this->searchfield,$this->searchfeedback);
-       
-     }elseif ($this->GET('searchquery') && $this->GET('searchtype') && $this->GET('searchfield')){
-    
+
+    }elseif ($this->GET('searchquery') && $this->GET('searchtype') && $this->GET('searchfield')){
+
       $this->searchfield = $this->GET('searchfield');
       $this->searchtype = $this->GET('searchtype');
       $this->searchquery = $this->GET('searchquery');
-      
+
       $this->set_session('searchfield',$this->searchfield);
       $this->set_session('searchtype',$this->searchtype);
       $this->set_session('searchquery',$this->searchquery);
-      
+
       // Reset paging
-      
+
       $this->start = 0;
       $this->set_session('start',0);
-      
+
     }elseif($this->session('searchquery')){
-    
+
       $this->searchfield = $this->session('searchfield');
       $this->searchtype = $this->session('searchtype');
       $this->searchquery = $this->session('searchquery');
@@ -266,26 +419,30 @@ class datagrid{
     }elseif(is_array($this->setting('defaultsearch'))){
 
       $defsearch = $this->setting('defaultsearch');
-      
+
       if($defsearch['field'] && $defsearch['type'] && $defsearch['value']){
 
-      $this->searchfield = $defsearch['field'];
-      $this->searchtype = $defsearch['type'];
-      $this->searchquery = $defsearch['value'];
-      
+        $this->searchfield = $defsearch['field'];
+        $this->searchtype = $defsearch['type'];
+        $this->searchquery = $defsearch['value'];
+
       }
 
     }
-    
-    
+
+
     if($this->searchquery && $this->searchfield && $this->searchtype){
-    
+
       $this->searchfeedback = "Showing items where <b>".$this->searchfield."</b> ".$this->searchtype." <b>\"".$this->searchquery."\"</b>";
 
-      if($this->field_attribs($this->get_primary_table().$this->searchfield)){ // Make sure field is legit
+      $field_parts = explode('.',$this->searchfield);
 
-        $this->searchsql = $this->get_primary_table().'.'.$this->searchfield;
-        
+      $this->dbg('Field parts',$field_parts);
+
+      if($this->struct[$field_parts[0]]['fields'][$field_parts[1]]){ // Make sure field is legit
+
+        $this->searchsql = $this->searchfield;
+
         if ($this->searchtype == "includes"){
           $this->searchsql .= " LIKE ";
           $this->searchsql .= "'%".$this->escape_str($this->searchquery)."%'";
@@ -294,10 +451,11 @@ class datagrid{
           $this->searchsql .= "'".$this->escape_str($this->searchquery)."'";
         }
       }else{
-        $this->set_feedback('Searched field doesn\'t exist!','warning');
+        $this->set_feedback('Searched field ('.$this->searchfield.') doesn\'t exist!','warning');
       }
     }
   }
+  
 
 
 
@@ -416,7 +574,16 @@ function sort(){
   
   function item_delete(){
     if(is_numeric($this->GET('id'))){
+      if($this->setting('delete_callback')){
+          $dele_cb_func = $this->setting('delete_callback');
+          if(function_exists($dele_cb_func)){
+             $dele_cb_func($this->GET('id'));
+          }else{
+            $this->exit_error('Undefined or inaccessible delete callback: '.$dele_cb_func);
+          }
+      }
       $this->db->delete($this->get_primary_table(),$this->get_primary_key()." = '".$this->GET('id')."'");
+
       return "Item ".$this->GET('id')." deleted";
     }else{
       $this->set_error("Invalid numeric key");
@@ -456,7 +623,7 @@ function sort(){
       if($callback = $attribs['save_callback']){
       
         if(function_exists($callback)){
-          $update_data[$field] = $callback($table,$field,$value,$_POST['data']);
+          $update_data[$field] = $callback($table,$field,$value,$_POST['data'],$key_value);
           
         }else{
           $this->dbg('Save callback error - undefined function',$callback);
@@ -482,7 +649,7 @@ function sort(){
       if($this->db->update('sql:'.$updatesql)){
         $this->feedback = "Item successfully updated in $table table";
       }else{
-        $this->exit_error('SQL error in UPDATE');
+        $this->exit_error($this->db->text_errors());
       }
       
 
@@ -504,7 +671,7 @@ function sort(){
       if($this->db->insert('sql:'.$insertsql)){
         $this->set_feedback("Item successfully added to $table table");
       }else{
-        $this->exit_error('SQL error in INSERT');
+        $this->exit_error('SQL error in INSERT'.$this->db->text_errors());
       }
       
 
@@ -649,7 +816,14 @@ function sort(){
     $this->struct[$primary_table]['fields'][$local_key]['display_type'] = "none";
     
     // Show the foreign title field, with appropriate (local field) header
-    $this->struct[$table]['fields'][$display_field] = array('type'=>'text','title'=>$column_title);
+    $this->struct[$table]['fields'][$display_field] = array(
+                  'type'=>'text',
+                  'title'=>$column_title,
+                  'fid' => $table.$display_field
+                  );
+                  
+    $this->fields[$table.$display_field] = $this->struct[$table]['fields'][$display_field];
+                  
 
   }
 
@@ -692,12 +866,19 @@ function sort(){
 
     foreach ($table_description as $key=>$row){
     
+      $attribs = array();
+    
       $attribs['maxlength'] = substr(strrchr($row['Type'], "("), 1, -1);
       $name = $row['Field']; 
       
       if($row['Key'] == 'PRI'){
         $attribs['type'] = "readonly,hidden";
         $attribs['key'] = 'primary';
+        
+        if(substr($name,-2) == "id"){
+           $attribs['title'] = 'ID';
+        }
+        
         if($this->primary_field == ''){
           $this->primary_field = $row['Field'];
         }
@@ -717,8 +898,11 @@ function sort(){
       }elseif($row['Field'] == 'date'){
         $attribs['type'] = 'date';
       }
-  
-      $attribs['title'] = str_replace('_',' ',ucfirst($row['Field']));
+      
+      if(!$attribs['title']){
+        $attribs['title'] = str_replace('_',' ',ucfirst($row['Field']));
+      }
+      
       $attribs['fid'] = $table.$name;
 
       $attribs['table'] = $table;
@@ -732,18 +916,12 @@ function sort(){
   }
   
   
-  function assemble_query(){
+  function grid_query(){
 
       $sql = 'SELECT ';
       
       $db_fields = array();
       $db_tables = array();
-      
-      $hidden_fields = array();
-      
-      if(is_array($this->session('hidden_fields'))){
-        $hidden_fields = $this->session('hidden_fields');
-      }
       
       foreach ($this->get_tables() as $table => $tabledata){
         if($tabledata['type'] != 'child'){
@@ -762,7 +940,7 @@ function sort(){
                  $alias_sql = '';
               }
 
-              if(!in_array($attribs['fid'],$hidden_fields)){
+              if(!$this->check_hidden_field($attribs['fid'])){
                   $db_fields[] = '`'.$table.'`'.'.'.'`'.$field.'`'.$alias_sql;
               }
             }
@@ -784,6 +962,7 @@ function sort(){
       }
 
       $this->totalrows = $this->db->count('sql:'.$sql);
+
       
       if ($this->searchsql && $this->detailssql){
         $sql .=" WHERE  ".$this->searchsql." AND ".$this->detailssql;
@@ -792,6 +971,23 @@ function sort(){
       }elseif($this->detailssql){
         $sql .=" WHERE  ".$this->detailssql;
       }
+
+      $extra_sql_conditions = $this->setting('sql_conditions');
+
+      if(is_array($extra_sql_conditions)){
+         if(count($extra_sql_conditions) > 0){
+           if($this->searchsql || $this->detailssql){
+              $sql .=" AND ";
+           }else{
+              $sql .=" WHERE ";
+           }
+           
+           $sql .= join(' AND ',$extra_sql_conditions);
+           
+         }
+      }
+
+      
        
       $this->queriedrows = $this->db->count('sql:'.$sql);
       
@@ -806,6 +1002,9 @@ function sort(){
       $this->displayedrows = $this->db->count('sql:'.$sql);
       
       $this->sql = $sql;
+      
+
+      $this->raw_grid_data = $this->db->select('sql:'.$this->sql);
   }
 
   function toggle_sorttype($sorttype){
@@ -833,9 +1032,7 @@ function sort(){
   
     $out = '';
 
-    if($_POST['action'] == 'process_csv'){
-      $this->csv_export_process();
-    }
+
 
     if ($this->POST('action') == 'update' || $this->POST('action') == 'insert'){
       if($this->check_privilege('edit')){
@@ -865,6 +1062,8 @@ function sort(){
       $out .= $this->create_html_form();
     }else if($this->GET('action') == 'create_php_code'){
       $out .= $this->create_php_code();
+    }else if($this->GET('action') == 'process_csv'){
+      $this->csv_export_process();
     }
     
     else if ($this->GET('action') == 'edit' || $this->GET('action') == 'add' || $this->GET('action') == 'copy'){
@@ -874,19 +1073,26 @@ function sort(){
       if($this->check_privilege('edit') && $this->GET('action') == 'edit'){
         $out .= $this->edit();
       }
+    }elseif($this->GET('action') == 'report'){
+    
+      $out = $this->report($this->GET('report'));
+
+
     }else{
     
       $this->sort();
       $this->search();
       $this->paging();
-      $this->assemble_query();
+      $this->grid_query();
       $this->default_hidden_fields();
+      $this->process_grid_data();
 
       $out .= $this->feedback();
       $out .= $this->grid_controls();
       $out .= $this->hidden_fields_links();
       $out .= $this->rowcount_feedback();
-      $out .= $this->make_grid();
+      $out .= $this->grid_template();
+      $out .= $this->paging_results_and_links();
       $out .= $this->admin_tools();
       $out .= $this->dev_tools();
       $out .= $this->footer();
@@ -916,237 +1122,16 @@ function sort(){
     return $return;
   }
 
-
-
-  private function make_grid(){
-
-    $out .= "<div id =\"dg\">";
-
-      $td = '
-      <td class="datafield">';
-      $etd = '
-      </td>';
-
-      $tr = '
-      <tr>';
-      $trend = '
-      </tr>';
-
-      $out .= '<table class="datatable"><tr><td valign="bottom">';
-      
-      if(strpos($this->settings['privileges'],'add') !== false){
-        $out .= $this->add_button();
-      }
-      
-      $out .= '</td>';
-
-      #### Table headers ####
-
-      foreach ($this->struct as $table => $tableinfo){
-        if($tableinfo['type'] != 'child'){
-          foreach($tableinfo['fields'] as $field => $fieldattribs){
-            $fid = $fieldattribs['fid'];
-            if(!$this->check_hidden_field($fid)){
-              if ($fieldattribs['display_type'] != 'none'){
-
-                if($this->sorttable == $table && $this->sortfield == $field){
-                  $headclass = "dataheadersort";
-                  $new_sort = $this->toggle_sorttype($this->sorttype);
-                }else{
-                  $headclass = "dataheader";
-                  $new_sort = $this->sorttype;
-                }
-
-
-                if($fieldattribs['type'] != 'derivative'){
-                  $columnhead = "<td class=\"$headclass\" valign=\"bottom\">
-                  <a class=\"$headclass\" href=\"".$this->target_url->get($this->GET_pfx()."sorttable=$table&".$this->GET_pfx()."sortfield=$field&".$this->GET_pfx()."sorttype=$new_sort")."\">$fieldattribs[title]</a>
-                  <a class=\"hidefield\" href=\"".$this->target_url->get($this->GET_pfx()."hide_field=$fid")."\">>hide<</a></td>";
-                }else{
-                  $columnhead = "
-                  <td class=\"$headclass\" valign=\"bottom\">
-                  <span class=\"$headclass\">$fieldattribs[title]</span>
-                  <a class=\"hidefield\" href=\"".$this->target_url->get().$this->GET_pfx()."hide_field=$fid\">>hide<</a>
-                  </td>";
-                }
-                $out .= $columnhead;
-              }
-            }
-          }
-        }
-        else{
-          $out .= "
-                  <td class=\"dataheader\" valign=\"bottom\">
-                  <span class=\"dataheader\">$tableinfo[title]</span>
-                  </td>";
-        }
-      }
-      $out .= "</tr>";
-
-    $main_grid_data = $this->db->select('sql:'.$this->sql);
-    
-    if(!is_array($main_grid_data)){
-      $this->dbg('Database error',$this->db->text_errors(),'error');
-      
-      $error_text = "
-      SQL error in grid display query. Please check that all the table and field names used in your grid setup exist in the database.<br /><br />
-      Database errors:";
-      $error_text .= $this->db->text_errors();
-      
-      $this->exit_error($error_text);
-    }
-    
-    foreach ($main_grid_data as $key=>$row) {
-
-      $this->rowcount++;
-
-      if($oddrow == 1){
-        $oddrow = 0;
-      }else{
-        $oddrow = 1;
-      }
-
-      $keyval = $row[$this->get_primary_key()];
-
-      $out .= $this->start_row($keyval,$oddrow);
-
-      $out .= $td.$this->edit_form($keyval).$etd;
-
-      foreach ($this->struct as $table => $tableinfo){
-        if($tableinfo['type'] != 'child'){
-          foreach ($tableinfo['fields'] as $field => $fieldattribs){
-            if ($fieldattribs['display_type'] != 'none' && $this->check_hidden_field($fieldattribs['fid']) != 1){
-
-              // To avoid column name conflicts, non-primary table column names are aliased to table_field
-              if($tableinfo['type'] != 'primary'){
-                $field = $table.'_'.$field;
-              }
-              $out .= $td;
-              $out .= $this->show_cell($field,$row[$field],$fieldattribs,$row,$keyval);
-              $out .= $etd;
-
-            }
-          }
-        }else{
-           $link_value = $row[$tableinfo['parent_link_field']];
-           $out .= $td;
-           
-           if($tableinfo['display_type'] == 'popup'){
-           
-             $GET_pfx = $tableinfo['GET_pfx'];
-             $child_title = $this->struct[$table]['title'];
-
-             $child_url_vars = array(
-                'parent_link_field' => $tableinfo['parent_link_field'],
-                'child_link_field' => $tableinfo['child_link_field'],
-                'link_value' => $link_value,
-                'mode' => 'child',
-                'display_type' => $tableinfo['display_type']
-             );
-
-             $child_url = $tableinfo['edit_url'].'?';
-
-             $join = '';
-             foreach ($child_url_vars as $key=>$value) {
-              	 $child_url .= $join.$GET_pfx.$key.'='.$value;
-              	 $join = '&';
-             }
-              
-              
-             $out .= "
-<div class=\"edit_child_cell_inactive\" onClick=\"show_child_grid_popup('$child_url')\">View/edit ".$tableinfo['title'].'</div>';
-
-          }elseif($tableinfo['display_type'] == 'iframe'){
-           
-              $out .= '
-<div class="edit_child_cell_inactive" id="child_grid_link_cell_'.$link_value.'">
-<span id="show_child_grid_'.$link_value.'" style="display:inline" onclick="javascript:show_child_grid(\''.$link_value.'\');">View/edit&nbsp;'.$tableinfo['title'].'</span>
-<span id="hide_child_grid_'.$link_value.'" style="display:none"  onclick="javascript:show_child_grid(\''.$link_value.'\');">Hide&nbsp;'.$tableinfo['title'].'</span>
-</div>
-';
-              $before_next_row = $this->show_child_grid($table,$link_value);
-              
-           }
-           $out .= $etd;
-        }
-      }
-
-      $out .= "</tr>";
-      $out .= $before_next_row;
-    }
-
-    $out .= "</table>";
-
-
-    // Grid feedback and paging links
-    if($this->mode_shows('paging')){
-
-      # no results
-      if (!$this->queriedrows){
-        $out .= "No data to display";
-      }else{
-
-        # results 'to the left' of ones shown
-        if($this->start > 0){
-        
-            $prevstart = ($this->start - $this->limit);
-            
-            if ($prevstart < 0){
-              $prevstart = "0";
-            }
-
-            $out .="
-            <br clear=\"all\">
-            <div align=\"left\" style=\"float:left\">
-            <a href=\"".$this->target_url->get(array($this->GET_pfx().'limit' => $this->limit,$this->GET_pfx().'start'=> $prevstart))."\"><<< Previous ".$this->limit." items</a>
-            </div>";
-        }
-
-        # results 'to the right' of ones shown
-        if($this->displayedrows < $this->queriedrows && ($this->start + $this->limit) < $this->queriedrows){
-          $nextstart = ($this->start + $this->limit);
-          $out .= "
-          <div align=\"right\" style=\"float:right\">
-          <a href=\"".$this->target_url->get(array($this->GET_pfx().'limit' => $this->limit,$this->GET_pfx().'start'=> $nextstart))."\">Next ".$this->limit." items >>></a>
-          </div>";
-        }
-
-        # All results shown
-        if($this->displayedrows == $this->queriedrows){
-          # With no searchquery
-          if($this->displayedrows == $this->totalrows){
-            $ifqueryfeedback = "in the table.";
-          }
-          # With a searchquery
-          if($this->searchquery && $this->displayedrows == $this->queriedrows){
-            $ifqueryfeedback = "that matched your query.";
-          }
-          $out .= "Showing all records $ifqueryfeedback";
-        }
-      }
-    }
-    $out .= "</div>";
-    return $out;
-  }
-
   function edit_form($id){
+
+    $img_path = $this->paths['images_path'];
+  
     $this->dbg('Target URL in edit_form()',$this->target_url->get());
   
     $out = "
-    <div align=\"center\" id=\"dg_edit_buttons\">";
+    <div align=\"center\" class=\"dg_edit_buttons\">";
     $keyinput = "<input type=\"hidden\" name=\"".$this->GET_pfx()."id\" value=\"$id\" />";
-    
-    if(strpos($this->settings['privileges'],'add') !== false){
-      $out .= "
-      <form name=\"update\" action=\"".$this->target_url->get()."\" method=\"get\" class=\"update\">";
-      $out .= $this->target_url->get_hidden_inputs();
-      $out .= "
-      <input type=\"hidden\" name=\"".$this->GET_pfx()."action\" value=\"copy\" />
-      <input type=\"submit\" value=\"+\" class=\"copy\">
-      $keyinput
-      </form>
-      ";
-    }
+
     
     if(strpos($this->settings['privileges'],'edit') !== false){
       $out .= "
@@ -1154,21 +1139,40 @@ function sort(){
       $out .= $this->target_url->get_hidden_inputs();
       $out .= "
       <input type=\"hidden\" name=\"".$this->GET_pfx()."action\" value=\"edit\" />
-      <input type=\"submit\" value=\"Edit\" class=\"update\"> 
+      <!-- input type=\"submit\" value=\"a\" class=\"update icon-edit\"  title=\"Edit record\" alt=\"Edit record\" -->
+      <input type=\"image\" src=\"".$img_path."edit-icon-20px.png\" title=\"Edit record\" alt=\"Edit\" />
       $keyinput
       </form>
       ";
     }
 
+    if(strpos($this->settings['privileges'],'add') !== false){
+      $out .= "
+      <form name=\"update\" action=\"".$this->target_url->get()."\" method=\"get\" class=\"update\">";
+      $out .= $this->target_url->get_hidden_inputs();
+      $out .= "
+      <input type=\"hidden\" name=\"".$this->GET_pfx()."action\" value=\"copy\" />
+      <!-- input type=\"submit\" value=\"c\" class=\"icon-new copy\" title=\"Copy record\"/ -->
+      <input type=\"image\" src=\"".$img_path."copy-icon-20px.png\" title=\"Copy record\" alt=\"Copy\"  />
+      $keyinput
+      </form>
+      ";
+    }
+    
     if(strpos($this->settings['privileges'],'delete') !== false){
       $out .= "<form action=\"".$this->target_url->get()."\" method=\"get\" class=\"update\">";
       $out .= $this->target_url->get_hidden_inputs();
       $out .= "
       <input type=\"hidden\" name=\"".$this->GET_pfx()."action\" value=\"delete\" />
       $keyinput
-      <input type=\"submit\" value=\"Del\" class=\"delete\" onClick=\"return confirmSubmit('$id')\"/>
+
+      <!--input type=\"submit\" value=\"b\" class=\"delete icon-delete\" onClick=\"return confirmSubmit('$id')\"  title=\"Delete record\"/ -->
+
+      <input type=\"image\" src=\"".$img_path."delete-icon-20px.png\" title=\"Delete record\" onClick=\"return confirmSubmit('$id')\" alt=\"Delete\"  />
+      <!-- input type=\"submit\" value=\"Del\" class=\"delete\" onClick=\"return confirmSubmit('$id')\"/ -->
       </form>";
     }
+
     
     $out .= "</div>";
     return $out;
@@ -1176,11 +1180,11 @@ function sort(){
 
   function start_row($keyval,$oddrow){
     if($oddrow == 1){
-      $bg = 'f4efdd';
+      $row_class = "odd_row";
     }else{
-      $bg = 'faf5ed';
+      $row_class = "even_row";
     }
-  return "<tr id=\"".$this->rowcount."\" bgcolor=\"#$bg\" onClick=\"highlightRow('".$this->rowcount."','#$bg')\">";
+  return "<tr id=\"".$this->rowcount."\" class=\"$row_class\" onClick=\"highlightRow('".$this->rowcount."','$row_class')\">";
   }
 
 
@@ -1199,17 +1203,16 @@ function sort(){
       if($fieldattribs['display_class']){
         $class = ' class="'.$fieldattribs['display_class'].'"';
       }
-      $out .= "
-          <div$class$style>
-";
-      
+      $out .= '<td class="datafield">';
+      $out .= "<div$class$style>\n";
+
 
 
       // CALLBACK FIELDS (Display output of callback function)
       if($fieldattribs['display_callback']){
         $function = $fieldattribs['display_callback'];
 
-        if(function_exists($function)){
+        if(is_callable($function)){
           $out .= $function($this->get_primary_table(),$field,$value,$row,$keyval);
         }else{
           $this->dbg('Error in display callback. Function doesn\'t exist',$function);
@@ -1239,7 +1242,7 @@ function sort(){
 
       }
       $out .= "
-          </div>";
+          </div></td>";
     return $out;
   }
 
@@ -1276,12 +1279,13 @@ function sort(){
     
     $out  = $this->feedback();
     
-    $out .= "<form action=\"".$this->target_url->get(array($this->GET_pfx().'action' => null))."\" method=\"post\" id=\"edit_form\">
+    $out .= "<form action=\"".$this->target_url->get(array($this->GET_pfx().'action' => null))."\" method=\"post\"  enctype=\"multipart/form-data\" id=\"edit_form\">
     <div>
     ";
 
     if($action == 'edit' || $action == 'copy'){
       $row = $this->db->select_one("sql:".$this->edit_query($id));
+      $this->edit_data = $row;
     }else{
       $row = NULL;
     }
@@ -1341,11 +1345,11 @@ function sort(){
           // CALLBACK FIELDS
           if($fa['edit_callback']){
              $function = $fa['edit_callback'];
-             if(function_exists($function)){
+             if(is_callable($function)){
                 $out .= $fieldlabel;
-                $out .= $function($this->get_primary_table(),$field,$row[$field],$row);
+                $out .= $function($this->get_primary_table(),$field,$row[$field],$row,$id);
              }else{
-                $this->dbg('Undefined or inaccessible callback function:',$function);
+                $this->dbg('Undefined or inaccessible callback function:',$function,'error');
              }
 
           }
@@ -1414,14 +1418,11 @@ function sort(){
             
             $init_str = "?content_css=".$this->settings['content_css']."&width=$size_array[0]&height=$size_array[1]";
             
-            if($this->mode_shows('html_head')){
-              $this->add_head_link('tiny_mce.js','js',$this->paths['tiny_mce_path']);
-              $this->add_head_link('plugins/tinybrowser/tb_tinymce.js.php','js',$this->paths['tiny_mce_path']);
+            $this->add_head_link('tiny_mce.js','js',$this->paths['tiny_mce_path']);
+            $this->add_head_link('plugins/tinybrowser/tb_tinymce.js.php','js',$this->paths['tiny_mce_path']);
               
-              $this->add_head_link('tinymce_init.js.php'.$init_str,'js',$this->paths['js_path']);
-            }
-            
-            //$out .= $this->wysiwyg_code($this->settings['content_css'],,$size_array[1],$size_array[2]);
+            $this->add_head_link('tinymce_init.js.php'.$init_str,'js',$this->paths['js_path']);
+
             $out .= "
             $fieldlabel
             <div style=\"margin-top: 5px;\">
@@ -1435,13 +1436,20 @@ function sort(){
          else if ($type == 'staticselect'){
             $statselect_items = $type_params;
             $out .= "$fieldlabel<select name=\"data[$field]\"  $fieldclass><br />";
+            $current_value_listed = false;
             foreach ($statselect_items as $key => $statselect_item){
                   $out .= "<option";
                   if ($statselect_item == $row[$field]){
                   $out .= " selected ";
+                    $current_value_listed = true;
                   }
                   $out .= ">$statselect_item</option>";
             }
+            // Avoid forcing overwrite of values not in list on edit...
+            if(!$current_value_listed){
+               $out .= "<option selected>".$row[$field]."</option>";
+            }
+            
             $out .= "</select>
             ";
           }
@@ -1626,30 +1634,32 @@ function sort(){
 
     $code .= "<title>".$this->setting('display_name')."</title>
     </head>
-    <body>";
+    <body class=\"datagrid\">";
 
     return $code;
   }
   
   function html_head_links(){
+     $code = '';
+    // Merge built in links (no path) with user links (with path)
+    $head_urls = $this->user_head_links;
 
-    $code = "
-     <link href=\"".$this->paths['css_path']."datagrid.css\" rel=\"stylesheet\">
-     <script language=\"javascript\"  type=\"text/javascript\"  src=\"".$this->paths['js_path']."datagrid.js\"></script>
-<script language=\"javascript\"  type=\"text/javascript\"  src=\"".$this->paths['js_path']."calendarDateInput.js\"></script>
-<script language=\"javascript\"  type=\"text/javascript\"  src=\"".$this->paths['js_path']."jquery.js\"></script>
-";
-    if(is_array($this->head_links['css'])){
-      foreach ($this->head_links['css'] as $key => $link){
-         $code .= "<link href=\"".$link."\" rel=\"stylesheet\">\n";
-      }
+    foreach ($this->head_links['css'] as $key=>$link){
+      $head_urls['css'][] = $this->paths['css_path'].$link;
     }
-    
-    if(is_array($this->head_links['js'])){
-      foreach ($this->head_links['js'] as $key => $link){
+    foreach ($this->head_links['js'] as $key=>$link){
+      $head_urls['js'][] = $this->paths['js_path'].$link;
+    }
+
+
+    foreach ($head_urls['css'] as $key => $link){
+        $code .= "<link href=\"".$link."\" rel=\"stylesheet\">\n";
+    }
+
+    foreach ($head_urls['js'] as $key => $link){
          $code .= "<script language=\"javascript\" type=\"text/javascript\" src=\"".$link."\"></script>\n";
-      }
     }
+
     return $code;
   }
   
@@ -1658,100 +1668,6 @@ function sort(){
     $out = "<h1 class=\"datagrid_header\">".$this->setting('display_name')."</h1>";
 
     return $out;
-  }
-  
-  
-  private function grid_controls(){ // Control show/hide buttons
-  
-    $show_search = $this->modes[$this->setting('mode')]['show_search'];
-    $show_paging = $this->modes[$this->setting('mode')]['show_paging'];
-  
-    if($show_paging || $show_search){
-      $out = '<b>Show/hide:</b> ';
-    }
-
-    if($show_paging && $show_search){
-      $link_sep = ' | ';
-    }
-
-    if($show_search){
-        $search_link = '<a href="javascript://" onclick="showhide_div(\'search_control\');">search control</a>';
-
-       if ($this->searchfeedback){
-         $search_display = 'block';
-       }else{
-         $search_display = 'none';
-       }
-
-      // Search input
-      $search_block = '
-      <div id="search_control" class="querybox" style="display: '.$search_display.';">
-      <span style="position: absolute; margin-top: -10px; margin-left: 10px; padding: 0px 2px 0px 2px; background-color: #fcfcfc; font-weight: bold">
-      Search</span><br />
-      ';
-
-
-      if ($this->searchfeedback){
-      $search_block .= $this->searchfeedback." | <a href=\"".$this->target_url->get(array($this->GET_pfx().'searchquery'=>'showall'))."\">Show all records</a><br>";
-      }
-
-      $search_block .= 'Show only items where:
-      <form action="'.$this->url.'" method="GET">
-      <select name="'.$this->GET_pfx().'searchfield" class="query">';
-      foreach ($this->get_table_fields($this->get_primary_table()) as $field => $fieldattribs){
-          if($field == $this->searchfield){
-            $selected = 'selected';
-          }else{
-            $selected = '';
-          }
-          $search_block .= "<option value=\"$field\" $selected>$fieldattribs[title]</option>";
-      }
-      $search_block .= '
-      </select>
-      <select name="'.$this->GET_pfx().'searchtype" class="query">';
-      $type_options = array('includes','equals');
-      foreach ($type_options as $key=>$value){
-          if($value == $this->searchtype){
-            $selected = 'selected';
-          }else{
-            $selected = '';
-          }
-          $search_block .= "<option $selected>$value</option>";
-      }
-      $search_block .= '
-      </select>
-      <input type="text" class="query" name="'.$this->GET_pfx().'searchquery" value="'.$this->searchquery.'"/>
-      <button type="submit" style="float: none;" class="query">Search</button>
-      <br clear="all"/>';
-
-      $search_block .= '
-      </form>
-      </div>
-      <br />';
-   }
-
-   if($show_paging){
-      $paging_link = '<A HREF="javascript://" ONCLICK="showhide_div(\'paging_control\');"> paging control</a>';
-
-      //Paging input
-      $paging_block .= "
-      <div id=\"paging_control\"  class=\"querybox\" style=\"display: none;\">
-      <span style=\"position: absolute; margin-top: -10px; margin-left: 10px; padding: 0px 2px 0px 2px; background-color: #fcfcfc; font-weight: bold\">
-      Paging</span>
-      <form action=\"".$this->url."\" method=\"GET\">
-      Showing up to:
-      <input type=\"text\" class=\"query\" style=\"float: none;\" name=\"".$this->GET_pfx()."limit\" value=\"".$this->limit."\" size=\"4\">
-      items per page, starting with item
-      <input type=\"text\" name=\"".$this->GET_pfx()."start\" class=\"query\" style=\"float: none;\" size=\"4\" value=\"".$this->start."\">
-      <button type=\"submit\" style=\"float: none\" class=\"query\" value=\"Update\">Update</button>
-      </form>
-      </div>
-      <br />";
-    }
-   
-     $out .=  $search_link.$link_sep.$paging_link;
-     $out .=  $search_block.$paging_block;
-     return $out;
   }
   
   function set_feedback($message,$class = "notice"){
@@ -1773,9 +1689,11 @@ function sort(){
    $this->set_session('hidden_fields',$hidden_fields);
   }
   function hide_field($fid){
-    $hidden_fields = $this->session('hidden_fields');
-    $hidden_fields[$fid] = $this->fields[$fid]['title'];
-    $this->set_session('hidden_fields',$hidden_fields);
+    if($this->fields[$fid]['display_type'] != 'none'){
+      $hidden_fields = $this->session('hidden_fields');
+      $hidden_fields[$fid] = $this->fields[$fid]['title'];
+      $this->set_session('hidden_fields',$hidden_fields);
+    }
   }
   function check_hidden_field($fid){
     $hidden_fields = $this->session('hidden_fields');
@@ -1788,20 +1706,22 @@ function sort(){
   function hidden_fields_links(){
    $hidden_fields = $this->session('hidden_fields');
    if(is_array($hidden_fields) && count($hidden_fields) != 0){
-     $out = "Show hidden fields: ";
+     $out = '<div class="hidden_field_control">Show hidden fields: ';
      $intermed="";
     foreach($hidden_fields as $fid => $title){
        $out .= "$intermed<a href=\"".$this->target_url->get(array($this->GET_pfx()."unhide_field"=>$fid))."\">$title</a>";
         $intermed = " | ";
     }
-    $out .= "<br /><br />";
+    $out .= "</div>";
    }
    return $out;
   }
   
   function csv_export_options(){
     $out = "<h2>CSV export options</h2>";
-    $out.= "<form name=\"cvs_export\" action=\"".$this->url."\" method=\"post\">";  $out .="Choose fields to include<br />";
+    $out.= "<form name=\"csv_export\" action=\"".$this->target_url->get()."\" method=\"get\">";
+    $out .= $this->target_url->get_hidden_inputs();
+    $out .="Choose fields to include<br />";
     foreach($this->fields as $fid => $atrbs){
         if(!$this->check_hidden_field($fid)){
             $checked = 'checked';
@@ -1813,100 +1733,110 @@ function sort(){
     $out .= "<input type=\"hidden\" name=\"".$this->GET_pfx()."action\" value=\"process_csv\">";
     $out .= "<input type=\"submit\"> <button type=\"button\" onclick=\"javascript:location.href ='".$this->url."'\">
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cancel &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</button>";
+    $out .= "</form>";
     return $out;
   }
   
   function csv_export_process(){
-    foreach($_POST['fields'] as $fid => $value){
-      if($value != 'on'){
+  
+    $filename = str_replace(' ','_',$this->setting('display_name')).'_export_'.date('Y-m-d',time()).'.csv';
+
+    $fields = $this->GET('fields');
+    
+    foreach($this->fields as $fid => $attribs){
+      if($fields[$fid] != 'on'){
         $this->hide_field($fid);
       }else{
         $this->unhide_field($fid);
-        $headers[] =  $this->field_attrib($fid,'title');
       }
     }
-    $this->assemble_query();
-    $this->export_csv($this->sql,$headers);
-  }
-  
-  function export_csv($sql,$headers = NULL,$filename = 'export.csv'){
+    
+    $this->grid_query();
+
       $csv_terminated = "\n";
       $csv_separator = ",";
       $csv_enclosed = '"';
       $csv_escaped = "\\";
 
-      // Gets the data from the database
-      $result = mysql_query($sql);
-      $fields_cnt = mysql_num_fields($result);
+      $data = $this->raw_grid_data;
+      
+      $csv_headers = array();
+      
+      foreach ($data[0] as $key=>$value) {
+       $csv_headers[] = $key;
+      }
+
+      
+      $d_rev = array_reverse($data, true);
+      $d_rev[] = $csv_headers;
+      $data = array_reverse($d_rev, true);
+      
+      foreach ($data as $key=>$row) {
+        $sep = '';
+        foreach ($row as $field=>$value) {
+          $value = strip_tags($value);
+          $out .= $sep.$csv_enclosed;
+          $out .= str_replace($csv_enclosed, $csv_escaped.$csv_enclosed,$value);
+          $out .= $csv_enclosed;
+          
+          $sep = $csv_separator;
+        	
+        }
+        $out .= $csv_terminated;
+      }
+      
+      if($this->modes[$this->setting('mode')]['redirect_file_exports']){
+      
+        $this->set_session('csv_data',$out);
+
+        $token = $this->get_sub_token('csv');
+
+        $get_str = "?dg_id=".$this->dg_name."_dg&ses_key=csvsub_token&token=$token&csv_fn=$filename";
 
 
-      $schema_insert = '';
+        $csv_url = $this->paths['dg_files_path'].'csv_export.php';
 
-      for ($i = 0; $i < $fields_cnt; $i++)
-      {
-          if(is_array($headers)){
-            $l = $csv_enclosed . str_replace($csv_enclosed, $csv_escaped . $csv_enclosed,
-                stripslashes($headers[$i])) . $csv_enclosed;
-            $schema_insert .= $l;
-            $schema_insert .= $csv_separator;
+        echo "<div class=\"download_button\"><a href=\"$csv_url".$get_str."\">Download CSV</a></div>";
+        
+      }else{
+      
+        /**/
+        header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+        header("Content-Length: " . strlen($out));
+        header("Content-type: text/x-csv");
+        //header("Content-type: text/csv");
+        //header("Content-type: application/csv");
+        header("Content-Disposition: attachment; filename=$filename");
 
-          }else{
-            $l = $csv_enclosed . str_replace($csv_enclosed, $csv_escaped . $csv_enclosed,
-                stripslashes(mysql_field_name($result, $i))) . $csv_enclosed;
-            $schema_insert .= $l;
-            $schema_insert .= $csv_separator;
+        echo $out;
+        exit;
 
-          }
-      } // end for
 
-      $out = trim(substr($schema_insert, 0, -1));
-      $out .= $csv_terminated;
+      }
+      
 
-      // Format the data
-      while ($row = mysql_fetch_array($result))
-      {
-          $schema_insert = '';
-          for ($j = 0; $j < $fields_cnt; $j++)
-          {
-              if ($row[$j] == '0' || $row[$j] != '')
-              {
+      
 
-                  if ($csv_enclosed == '')
-                  {
-                      $schema_insert .= $row[$j];
-                  } else
-                  {
-                      $schema_insert .= $csv_enclosed .
-  					str_replace($csv_enclosed, $csv_escaped . $csv_enclosed, $row[$j]) . $csv_enclosed;
-                  }
-              } else
-              {
-                  $schema_insert .= '';
-              }
+   }
 
-              if ($j < $fields_cnt - 1)
-              {
-                  $schema_insert .= $csv_separator;
-              }
-          } // end for
-
-          $out .= $schema_insert;
-          $out .= $csv_terminated;
-      } // end while
-
-      header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
-      header("Content-Length: " . strlen($out));
-      // Output to browser with appropriate mime type, you choose ;)
-      header("Content-type: text/x-csv");
-      //header("Content-type: text/csv");
-      //header("Content-type: application/csv");
-      header("Content-Disposition: attachment; filename=$filename");
-      echo $out;
-      exit;
-
+  function get_sub_token($session_key = ''){
+    $token = md5($this->dg_name.time().$this->secure_salt);
+    $session_token = md5($token.$this->secure_salt);
+    $session_key .= 'sub_token';
+    $this->set_session($session_key,$session_token);
+    
+    $this->dbg('Making sub token w ses key',$session_key);
+    $this->dbg('$token',$token);
+    $this->dbg('$session_token',$session_token);
+    $this->dbg('$session_key',$session_key);
+    
+    return $token;
   }
+  
   function csv_export_link(){
-    return "<br /><a href=\"".$this->urlqs."action=export_csv\">Export CSV</a>";
+
+    $url = $this->target_url->get($this->GET_pfx()."action=export_csv");
+    return "<br /><a href=\"$url\">Export CSV</a>";
   }
   
   function html_form_link(){
@@ -1915,46 +1845,6 @@ function sort(){
   function php_input_link(){
     return "<br /><a href=\"".$this->urlqs."action=create_php_code\">Create PHP input code</a>";
   }
-  
-  function wysiwyg_code($content_css,$width = "900", $height = "500", $type = NULL){
-  
-return'
-<script language="javascript" type="text/javascript" src="'.$this->paths['tiny_mce_path'].'tiny_mce.js"></script>
-<script type="text/javascript"
-   src="'.$this->paths['tiny_mce_path'].'/plugins/tinybrowser/tb_tinymce.js.php"></script>
-
-
-<script language="javascript" type="text/javascript">
-
-
-
-
-tinyMCE.init({
-  theme: "advanced",
-  theme_advanced_toolbar_location : "top",
-	theme_advanced_toolbar_align : "left",
-	mode : "specific_textareas",
-	editor_selector : "mceEditor",
-  content_css : "' . $content_css . '",
-  apply_source_formatting : true,
-  extended_valid_elements : "a[href|target|name]",
-  plugins : "safari,pagebreak,style,layer,table,advhr,advimage,advlink,emotions,iespell,insertdatetime,preview,media,searchreplace,print,contextmenu,paste,directionality,fullscreen,noneditable,visualchars,nonbreaking,xhtmlxtras",
-  theme_advanced_buttons1 : "bold,italic,underline,strikethrough,|,justifyleft,justifycenter,justifyright,justifyfull,|,styleselect,formatselect,fontselect,fontsizeselect",
-  theme_advanced_buttons2 : "cut,copy,paste,pastetext,pasteword,|,search,replace,|,bullist,numlist,|,outdent,indent,blockquote,|,undo,redo,|,link,unlink,anchor,image,cleanup,help,code,|,insertdate,inserttime,preview,|,forecolor,backcolor",
-  theme_advanced_buttons3 : "tablecontrols,|,hr,removeformat,visualaid,|,sub,sup,|,charmap,emotions,iespell,media,advhr,|,print,|,ltr,rtl,|,fullscreen",
-  theme_advanced_buttons4 : "insertlayer,moveforward,movebackward,absolute,|,styleprops,|,cite,abbr,acronym,del,ins,attribs,|,visualchars,nonbreaking,template,pagebreak",
-
-  file_browser_callback : \'tinyBrowser\',
-  height:"' . $height . '",
-  width:"' . $width . '",
-  theme_advanced_statusbar_location : "bottom",
-  theme_advanced_resizing : true
-
-});
-</script>';
-
-}
-
 
   function dynamic_select($name, $options_table, $opt_value_field, $opt_display_field = NULL, $current_value = NULL,$blank_option = NULL){
 
@@ -2037,7 +1927,15 @@ tinyMCE.init({
   }
   
   private function show_child_grid($table,$link_value){
-     $url = $this->struct[$table]['edit_url'];
+    if($this->struct[$table]['edit_url']){
+       $child_url = $this->struct[$table]['edit_url'].'?';
+     }else{
+       $database_name = $this->db->db_name;
+       $child_url = $this->dg_relative_path.'prototype_child.php?';
+       $child_url .= "token=".$this->get_sub_token()."&dg_id=".$this->dg_name."_dg&";
+       $child_url .= 'table='.$table.'&database='.$database_name.'&';
+     }
+     
      $GET_pfx = $this->struct[$table]['GET_pfx'];
      $parent_link_field = $this->struct[$table]['parent_link_field'];
      $child_link_field = $this->struct[$table]['child_link_field'];
@@ -2046,16 +1944,18 @@ tinyMCE.init({
      
     $out .= '
     <tr id="child_grid_'.$link_value.'" class="child_grid" style="display: none;">
-    <td colspan="100">';
+    ';
     
     
+    /* This code is now added via JS when the link is clicked... keeping it here for now just in case
+    $out .=  '
+    <td colspan="100">
+    <iframe src="'.$child_url.$GET_pfx.'mode=child&'.$GET_pfx.'parent_link_field='.$parent_link_field.'&'.$GET_pfx.'child_link_field='.$child_link_field.'&'.$GET_pfx.'link_value='.$link_value.'&'.$GET_pfx.'display_type='.$display_type.'" style="width: 100%; height: 400px; border: 0px;" seamless/>
+    </iframe>
+    </td>';
+    */
     
     $out .=  '
-    <iframe src="'.$url.'?'.$GET_pfx.'mode=child&'.$GET_pfx.'parent_link_field='.$parent_link_field.'&'.$GET_pfx.'child_link_field='.$child_link_field.'&'.$GET_pfx.'link_value='.$link_value.'&'.$GET_pfx.'display_type='.$display_type.'" style="width: 100%; height: 400px; border: 0px;" seamless/>
-    </iframe>';
-    
-    $out .=  '
-    </td>
     </tr> ';
     return $out;
   }
@@ -2143,7 +2043,7 @@ tinyMCE.init({
               $out .= $fieldlabel;
               $out .= $function($this->get_primary_table(),$field,$row[$field],$row);
            }else{
-              $this->dbg('Undefined or inaccessible callback function:',$function);
+              $this->dbg('Undefined and/or inaccessible callback function',$function);
            }
          }
           
@@ -2317,12 +2217,12 @@ tinyMCE.init({
   }
   
   function dbg($var,$val,$status = 'DEBUG'){
+
     if(is_callable($this->setting('global_debug_function'))){
+
       $dbgf = $this->setting('global_debug_function');
       $dbgf($var,$val,$status);
     }else if($this->debug_level == 2 || ($this->debug_level == 1 && $status == 'error')){
-
-       global $debug_output;
 
        $out = "<b>[".strtoupper($status)."] $var:</b>";
        if (is_array($val)){
@@ -2335,7 +2235,7 @@ tinyMCE.init({
 
       $out .= "<br /><br />";
 
-      $debug_output .= $out;
+      $this->debug_output .= $out;
 
     }
   }
@@ -2367,6 +2267,7 @@ tinyMCE.init({
   
   function add_head_link($file,$type = 'css',$path = NULL){
   
+    /*
     if($path == NULL){
       if($type == 'css'){
         $path = $this->paths['css_path'];
@@ -2374,9 +2275,10 @@ tinyMCE.init({
         $path = $this->paths['js_path'];
       }
     }
+    */
     
-    if(!in_array($path.$file,$this->head_links[$type])){
-       $this->head_links[$type][] = $path.$file;
+    if(!in_array($path.$file,$this->user_head_links[$type])){
+       $this->user_head_links[$type][] = $path.$file;
     }
     
   }
@@ -2430,6 +2332,393 @@ tinyMCE.init({
     $out .= '</span>';
     return $out;
   }
+  
+  function add_sql_condition($str){
+    $this->settings['sql_conditions'][] = $str;
+  }
+  
 
+  private function process_grid_data(){
+
+    $main_grid_data = $this->raw_grid_data;
+    
+    $out = array();
+    $meta = array();
+
+    if(!is_array($main_grid_data)){
+      $this->dbg('Database error',$this->db->text_errors(),'error');
+
+      $error_text = "
+      SQL error in grid display query. Please check that all the table and field names used in your grid setup exist in the database.<br /><br />
+      Database errors:";
+      $error_text .= $this->db->text_errors();
+
+      $this->exit_error($error_text);
+    }
+
+    foreach ($main_grid_data as $key=>$row) {
+
+      $keyval = $row[$this->get_primary_key()];
+      
+      $out[$keyval] = array();
+      $meta[$keyval] = array();
+
+      foreach ($this->struct as $table => $tableinfo){
+      
+        if($tableinfo['type'] != 'child'){
+        
+          foreach ($tableinfo['fields'] as $field => $fieldattribs){
+
+            
+            if ($fieldattribs['display_type'] != 'none' && $this->check_hidden_field($fieldattribs['fid']) != 1){
+
+              // To avoid column name conflicts, non-primary table column names are aliased to table_field
+              if($tableinfo['type'] != 'primary'){
+                $aliased_field = $table.'_'.$field;
+              }else{
+                $aliased_field = $field;
+              }
+              
+              $fid = $table.$field;
+
+              $value = $row[$aliased_field];
+
+              $meta[$keyval][$aliased_field] = $fieldattribs;
+
+              // Table headers
+
+             if(!$this->display_headers[$fid]){
+
+               if($this->sorttable == $table && $this->sortfield == $field){
+                  $header['class'] = "dataheadersort";
+                  $new_sort = $this->toggle_sorttype($this->sorttype);
+                }else{
+                  $header['class'] = "dataheader";
+                  $new_sort = $this->sorttype;
+                }
+
+
+                if($fieldattribs['type'] != 'derivative'){
+                  $header['sort_url'] = $this->target_url->get($this->GET_pfx()."sorttable=$table&".$this->GET_pfx()."sortfield=$field&".$this->GET_pfx()."sorttype=$new_sort");
+                }
+
+                $header['hide_url'] = $this->target_url->get($this->GET_pfx()."hide_field=".$fieldattribs['fid']);
+
+                $header['title'] = $fieldattribs['title'];
+
+
+                $this->display_headers[$fid] = $header;
+              }
+
+
+              if($fieldattribs['truncate']){
+                 $trunc_break = '';
+                 $trunc_pad = '...';
+                 $value = $this->truncate($value,$fieldattribs['truncate'],$trunc_break,$trunc_pad);
+              }
+
+
+              // CALLBACK FIELDS (Display output of callback function)
+              if($fieldattribs['display_callback']){
+                $function = $fieldattribs['display_callback'];
+
+                if(is_callable($function)){
+                  $value = $function($this->get_primary_table(),$field,$value,$row,$keyval);
+                }else{
+                  $this->dbg('Error in display callback. Function doesn\'t exist',$function);
+                }
+
+              }
+
+              // DISPLAY TEMPLATE
+              else if($fieldattribs['display_template']){
+                $code = $fieldattribs['display_template'];
+
+                foreach ($row as $key=>$value) {
+                	$code = str_replace('['.$key.']',$value,$code);
+                }
+
+                $value = $code;
+
+              }else{
+
+                if($fieldattribs['display_type'] == 'currency'){
+                  $value = $this->currency_format($value);
+                }
+              }
+              $out[$keyval][$aliased_field] = $value;
+            }
+          }
+        }else{
+
+        
+           $link_value = $row[$tableinfo['parent_link_field']];
+
+
+            $GET_pfx = $tableinfo['GET_pfx'];
+            $child_title = $this->struct[$table]['title'];
+
+           $this->display_headers[$table.'child'] = array(
+            'title' => $child_title,
+            'type' => 'child'
+           );
+           
+             $child_url_vars = array(
+                'parent_link_field' => $tableinfo['parent_link_field'],
+                'child_link_field' => $tableinfo['child_link_field'],
+                'link_value' => $link_value,
+                'mode' => 'child',
+                'display_type' => $tableinfo['display_type']
+             );
+             if($tableinfo['edit_url']){
+               $child_url = $tableinfo['edit_url'].'?';
+             }else{
+               $database_name = $this->db->db_name;
+               $child_url = $this->dg_relative_path.'prototype_child.php?';
+               $child_url .= 'table='.$table.'&database='.$database_name.'&';
+               $child_url .= "token=".$this->get_sub_token()."&dg_id=".$this->dg_name."_dg&";
+             }
+             $join = '';
+             foreach ($child_url_vars as $key=>$value) {
+              	 $child_url .= $join.$GET_pfx.$key.'='.$value;
+              	 $join = '&';
+             }
+
+          if($tableinfo['display_callback']){
+            $tdc_func = $tableinfo['display_callback'];
+            
+            $out[$keyval][$table.'child'] = $tdc_func($child_url_vars,$child_url);
+
+
+          }elseif($tableinfo['display_type'] == 'popup'){
+
+             $out[$keyval][$table.'child'] = "
+<div class=\"edit_child_cell_inactive\" onClick=\"show_child_grid_popup('$child_url')\">View/edit ".$tableinfo['title'].'</div>';
+
+          }elseif($tableinfo['display_type'] == 'iframe'){
+
+              $out[$keyval][$table.'child'] = '
+<div class="edit_child_cell_inactive" id="child_grid_link_cell_'.$link_value.'">
+<span id="show_child_grid_'.$link_value.'" style="display:inline" onclick="javascript:show_child_grid(\''.$link_value.'\',\''.$child_url.'\');">View/edit&nbsp;'.$tableinfo['title'].'</span>
+<span id="hide_child_grid_'.$link_value.'" style="display:none"  onclick="javascript:show_child_grid(\''.$link_value.'\');">Hide&nbsp;'.$tableinfo['title'].'</span>
+</div>
+';
+              $meta[$keyval]['before_next_row'] = $this->show_child_grid($table,$link_value);
+
+          }
+        }
+      }
+    }
+    $this->grid_data = $out;
+    $this->dbg('Grid data',$out);
+    $this->grid_meta_data = $meta;
+  }
+
+  
+   private function grid_template(){
+
+      $out .= "<div id =\"dg\">";
+
+      $out .= '<table class="datagrid">
+      <tr>
+      <td class="add_button" rowspan="2">';
+
+      if(strpos($this->settings['privileges'],'add') !== false){
+        $out .= $this->add_button();
+      }
+
+      $out .= '</td>';
+
+      #### Table headers ####
+      // If no data is found, headers will be empty....
+      
+      if(is_array($this->display_headers)){
+        foreach ($this->display_headers as $key=>$data) {
+          if($data['type'] == 'child'){
+             $out .= "<td class=\"childheader\" valign=\"center\">
+             <span class=\"dataheader\">$data[title]</span>
+             </td>";
+          }else{
+             $out .= "<td class=\"$data[class]\" valign=\"center\" onclick=\"javascript:location.href='$data[sort_url]'\" style=\"cursor:pointer\">
+             <a class=\"$data[class]\" href=\"$data[sort_url]\">$data[title]</a>
+             </td>";
+
+           }
+        }
+      }
+      
+      $out .= "</tr><tr>";
+      
+      if(is_array($this->display_headers)){
+        foreach ($this->display_headers as $key=>$data) {
+          if($data['type'] == 'child'){
+             $out .= "<td class=\"hidefield\" valign=\"top\">
+             </td>";
+          }else{
+             $out .= "<td class=\"hidefield\">
+             <a class=\"hidefield\" href=\"$data[hide_url]\">&raquo;&nbsp;hide&nbsp;&laquo;</a>
+             </td>";
+
+           }
+        }
+      }
+      $out .= "</tr>";
+      
+      $rowcount = 0;
+      foreach ($this->grid_data as $key=>$row){
+        $rowcount++;
+        $meta = $this->grid_meta_data[$key];
+        
+        if($rowcount % 2){
+          $row_class = "odd_row";
+        }else{
+          $row_class = "even_row";
+        }
+        
+        $out .= "<tr id=\"$key\" class=\"$row_class\" onClick=\"highlightRow('$key','$row_class')\">";
+        $out .= "<td class=\"datafield row_controls\">".$this->edit_form($key)."</td>";
+
+        foreach ($row as $field=>$value) {
+        
+          if($meta[$field]['display_style']){
+            $style = ' style="'.$fieldattribs['display_style'].'"';
+          }
+
+          if($meta[$field]['display_class']){
+            $class = ' class="'.$fieldattribs['display_class'].'"';
+          }
+          
+          $out .= '<td class="datafield">';
+          $out .= "<div$class$style>\n";
+          $out .= $value;
+          $out .= '</div>';
+          $out .= '</td>';
+          
+        }
+        $out .= "</tr>";
+
+        if($meta['before_next_row']){
+          $out .= $meta['before_next_row'];
+        }
+
+     }
+
+     $out .= "</table>";
+
+     return $out;
+
+  }
+  
+  function add_report($title,$code,$attribs = array()){
+  
+    $grid_link = $this->target_url->get(array($this->GET_pfx().'action'=>NULL, $this->GET_pfx().'report'=>NULL));
+
+    $defaults = array(
+      'beginning' => '<h2>'.$title.'</h2><p><a href="'.$grid_link.'">Return to '.$this->grid_title.' table</a></p>',
+      'end' => '<p><a href="'.$grid_link.'">Return to '.$this->grid_title.' table</a></p>'
+    );
+    
+    foreach ($defaults as $key=>$value) {
+      if(!$attribs[$key]){
+         $attribs[$key] = $value;
+      }
+    }
+  
+    if(!$attribs['slug']){
+      $slug = strtolower(str_replace(' ','_',$title));
+    }
+    $this->reports[$slug] = $attribs;
+    $this->reports[$slug]['code'] = $code;
+    $this->reports[$slug]['title'] = $title;
+  }
+  
+  private function report($slug){
+    $rdata = $this->reports[$slug];
+    
+    $template = $rdata['code'];
+    
+    $this->sort();
+    $this->search();
+    $this->paging();
+    $this->grid_query();
+    $this->default_hidden_fields();
+    //$this->process_grid_data();
+    
+    foreach ($this->raw_grid_data as $id=>$row) {
+    
+      $code = $template;
+      
+      foreach ($row as $key=>$value) {
+        $code = str_replace("[$key]",$value,$code);
+      	
+      }
+      
+    	$out .= $code;
+    }
+    return $rdata['beginning'].$out.$rdata['end'];
+  }
+  
+  function reports_tab(){
+    foreach ($this->reports as $slug=>$data) {
+       $report_links[] = '<a href="'.$this->target_url->get(array($this->GET_pfx()."action"=>'report',$this->GET_pfx()."report"=>$slug)).'">'.$data['title'].'</a>';
+    }
+    return join($report_links,' | ');
+  }
+  
+  
+  private function paging_results_and_links(){
+
+   // Grid feedback and paging links
+    if($this->mode_shows('paging')){
+
+      # no results
+      if (!$this->queriedrows){
+        $out .= '<div class="no_data">No data found</div>';
+      }else{
+
+        # results 'to the left' of ones shown
+        if($this->start > 0){
+
+            $prevstart = ($this->start - $this->limit);
+
+            if ($prevstart < 0){
+              $prevstart = "0";
+            }
+
+            $out .="
+            <br clear=\"all\">
+            <div align=\"left\" style=\"float:left\">
+            <a href=\"".$this->target_url->get(array($this->GET_pfx().'limit' => $this->limit,$this->GET_pfx().'start'=> $prevstart))."\"><<< Previous ".$this->limit." items</a>
+            </div>";
+        }
+
+        # results 'to the right' of ones shown
+        if($this->displayedrows < $this->queriedrows && ($this->start + $this->limit) < $this->queriedrows){
+          $nextstart = ($this->start + $this->limit);
+          $out .= "
+          <div align=\"right\" style=\"float:right\">
+          <a href=\"".$this->target_url->get(array($this->GET_pfx().'limit' => $this->limit,$this->GET_pfx().'start'=> $nextstart))."\">Next ".$this->limit." items >>></a>
+          </div>";
+        }
+
+        # All results shown
+        if($this->displayedrows == $this->queriedrows){
+          # With no searchquery
+          if($this->displayedrows == $this->totalrows){
+            $ifqueryfeedback = "in the table.";
+          }
+          # With a searchquery
+          if($this->searchquery && $this->displayedrows == $this->queriedrows){
+            $ifqueryfeedback = "that matched your query.";
+          }
+          $out .= "Showing all records $ifqueryfeedback";
+        }
+      }
+    }
+    $out .= "</div>";
+    return $out;
+
+  }
+  
 }
 ?>

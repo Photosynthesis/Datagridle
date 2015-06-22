@@ -16,6 +16,6 @@ $grid->set_field_attrib('comments','date','type','date');
 echo $grid->grid();
 
 testit('GET',$_GET);
-//testit('showtests');
+testit('showtests');
 
 ?>

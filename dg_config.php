@@ -7,4 +7,6 @@ $db_config = array(
   'pass'=>''
   
 );
+
+$secure_salt = "SomeR@ndomString";
 ?>

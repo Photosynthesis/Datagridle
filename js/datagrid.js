@@ -11,6 +11,20 @@ if(!Array.prototype.indexOf) {
 
 String.prototype.trim = String.prototype.trim || function trim() { return this.replace(/^\s\s*/, '').replace(/\s\s*$/, ''); };
 
+// Bind the save keystroke for save and continue
+$(document).keydown(function(e) {
+    if ((e.which == '115' || e.which == '83' ) && (e.ctrlKey || e.metaKey))
+    {
+        e.preventDefault();
+        var input = $("<input>", { type: "hidden", name: "continue", value: "on" }); $('#edit_form').append($(input));
+        
+        $('#edit_form').submit();
+
+        return false;
+    }
+    return true;
+});
+
 
 // Delete confirmation
 function confirmSubmit(item_num){
@@ -26,19 +40,27 @@ function submitform(){
   document.update.submit();
 }
 
-function highlightRow(row_id,default_color){
-  var hlbg = '#aaddaa';
-  if (document.getElementById(row_id).bgColor == hlbg){
-    document.getElementById(row_id).bgColor = default_color;
+
+function highlightRow(row_id,unselected_class){
+  var row = document.getElementById(row_id);
+  
+  if (row.className == 'selected_row'){
+    row.className = unselected_class;
   }else{
-    document.getElementById(row_id).bgColor = hlbg;
+    row.className = 'selected_row';
   }
 }
 
 
 // Runs the "Save and continue" field for editing
 function contButton(val){
-  document.getElementById('continue_edit').value=val;
+  var input = $("<input>", { type: "hidden", name: "continue", value: val }); $('#edit_form').append($(input));
+  alert('conButton called');
+}
+
+function saveCallback(){
+  var input = $("<input>", { type: "hidden", name: "continue", value: "on" }); $('#edit_form').append($(input));
+  $('#edit_form').submit();
 }
 
 function multicheckUpdate(field_id,option){
@@ -81,8 +103,16 @@ function showhide_div(id) {
 }
 
 
-function show_child_grid(id){
+function show_child_grid(id,url){
+
   grid_id = '#child_grid_'+id;
+  
+  if($(grid_id).html() == false){
+    iFrameHtml = "<td colspan=\"100\"><iframe src="+url+" style=\"width: 100%; height: 400px; border: 0px;\" seamless/></iframe></td>";
+
+    $(grid_id).html(iFrameHtml);
+  }
+  
   cell_id = '#child_grid_link_cell_'+id;
   show_link_id = '#show_child_grid_'+id;
   hide_link_id = '#hide_child_grid_'+id;
@@ -91,6 +121,17 @@ function show_child_grid(id){
   $(hide_link_id).toggle();
 }
 
-function show_child_grid_popup(url){
-  child = window.open(url,'child_grid','height=400,width=600,left=20,top=20,resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,directories=no,status=yes').focus();
+function show_child_grid_popup(url,other_params){
+
+  if(!other_params){
+    other_params = {}
+  }
+
+  height = other_params.height || 400;
+  width = other_params.width || 600;
+  left = other_params.left || 20;
+  top = other_params.top || 20;
+  
+  child = window.open(url,'child_grid','height='+height+',width='+width+',left='+left+',top='+top+',resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,directories=no,status=yes').focus();
+  
 }

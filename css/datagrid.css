@@ -1,18 +1,19 @@
 /* CSS for non table-specific stuff */
 
-body{
-  font-family: arial;
-  color:color: #449977;
+body.datagrid{
+  font-family: Ubuntu, helvetica;
+  color: #333;
+  font-size: 16px;
 }
 
 
-h1{
+body.datagrid h1{
   font-family: arial;
   font-size: 20px;
   color: #999999;
 }
 
-h2{
+body.datagrid h2{
   font-family: arial;
   font-size: 17px;
   color: #002244;
@@ -21,11 +22,7 @@ h2{
 
 
 button.query{
-  margin: 10px 2px 0px 2px;
-  background-color: #eeffee;
-  border: 1px solid #999999;
   float:left;
-  clear: right;
 }
 
 
@@ -40,73 +37,87 @@ button.query{
 }
 
 
-/* For the delete and update buttons */
-
-#dg_edit_buttons{
+/* For.dg_edit_buttons{
   width:95px;
+} the delete and update buttons */
+
+td.row_controls{
+ padding: 1px !important;
+ text-align:center;
+ padding:auto;
 }
 
-#dg_edit_buttons input{
-  margin:2px;
-  padding: 1px;
-  border: 1px solid #999999;
+.dg_edit_buttons input{
+  margin: 3px;
+  padding-right:5px;
+  border: none;
   float: left;
+  background: none;
+  cursor: pointer;
 }
 input.update{
-  background-color: #ffffff;
+  font-size: 1.6em !important;
+  color:#117;
 }
 
 input.delete{
-  background-color: #eeccbb;
+  color:#711;
+
 }
 
 input.copy{
-  background-color: #bbffbb;
-  padding-top: -2px;
-  font-family: arial;
-  line-height: 12px;
-  padding: 0px;
+  color:#161;
 }
 
 input.update:hover{
-  background-color: #aabbee;
+  color: #39f;
 }
 input.delete:hover{
-  background-color: red;
+  color:red;
 }
 input.copy:hover{
-  background-color: #449944;
+ color:#0d0;
 }
 
 
-/* Table display styles */ 
-td.dataheader, td.dataheadersort{
+/* Table display styles */
+td.dataheader, td.dataheadersort, td.childheader{
   padding: 0px;
-}
-a.dataheader, a.dataheadersort{
-  padding: 1px 3px 1px 3px;
+  border-collapse: collapse;
+  background-color: #eee;
   font-weight: bold;
-  display:block;
-  font-family: arial;
-  text-decoration: none;
+  font-family: Ubuntu, hevetica, arial;
   text-align: center;
-}
-a.dataheader{
-  color: #556699;
-  background-color:#EBEADB;
-  border-bottom: 2px solid #dd9933;
+  border-right:1px solid #ddd;
+  border-bottom: 2px solid #888;
+  color: #666;
+  vertical-align:center;
 }
 
-a.dataheader:hover{
-  background-color:#cBcAdB;
+a.dataheader, a.dataheadersort, span.dataheader{
+padding: 1px 3px 1px 3px;
+text-decoration: none;
+display: block;
+}
+
+a.dataheader, span.dataheader{
+  color: #666;
+}
+
+a.dataheadersort{
   color: #ffffff;
 }
-a.dataheadersort{
-  border-bottom: 2px solid red;
-  background-color:#EBEADB;
-  color: #000000;
+
+td.dataheader:hover,a.dataheader:hover{
+  background-color:#777;
+  color: #ffffff;
 }
-span.dataheader{
+td.dataheadersort{
+  border-bottom: 2px solid #dd4814;
+  background-color:#888;
+  color: #ffffff;
+}
+span.data--header{
   padding: 1px 3px 1px 3px;
   display:block;
   color: #556699;
@@ -116,41 +127,70 @@ span.dataheader{
   text-align: center;
   background-color:#EBEADB;
   border-bottom: 2px solid #dd9933;
+  border-collapse: collapse;
 }
 span.help{
   cursor: help;
   border-bottom: 1px dotted #44bb55;
 }
-table.datatable{
+table.datagrid{
   background-color: #ffffff;
   font-size: 13px;
+  border-collapse: collapse;
+  width: 100%;
 }
 td.datafield{
   padding: 3 8 3 8px;
+  border:1px solid #ddd;
+  margin:0;
 }
 
 .datafield2{
-  background-color: #faf5ed;
+  background-color: #eee;
 }
+
 tr.datafield1:hover, tr.datafield2:hover{
   background-color: #caf5cd;
   border: 1px solid black;
 }
 
-.hidefield{
-  font-family: arial;
-  margin-top: 1px;
+
+.odd_row{
+background-color: #f0f0f0;
+}
+.even_row{
+background-color: #fafafa;
+}
+
+.selected_row{
+background-color: #bbeeee;
+}
+
+td.hidefield{
+  padding: 0px;
+  background-color: #bbb;
+  border-right: 1px solid #ddd;
+}
+
+a.hidefield{
+  font-family: Ubuntu, helvetica, arial;
   display: block;
-  background-color: #ccddee;
+  background-color: #bbb;
+  color:#fff;
+  border-collapse: collapse;
+  padding: 2px;
   font-weight:bold;
   font-size: 11px;
   text-align: center;
   text-decoration: none;
+  border-right: 1px solid #ddd;
+  margin: 0;
+  /*box-shadow: 0px 5px 5px 0px gray;*/
 }
 
 
 
-/* Update, edit, add form styles */ 
+/* Update, edit, add form styles */
 #edit_form input, #edit_form select, #edit_form textarea{
   background-color: #eeffee;
   border: 1px solid #999999;
@@ -164,8 +204,8 @@ tr.datafield1:hover, tr.datafield2:hover{
 }
 
 #edit_form textarea{
-  width: 190px;
-  height: 90px;
+  width: 400px;
+  height:200px;
 }
 
 #edit_form button{
@@ -210,34 +250,64 @@ float: left;
 }
 
 
-/* Display page forms: add, query, etc. */
+/* Display page forms: add, etc. */
 
 form.update{
   display: inline;
 }
-
-input.query, select.query{
-  margin: 10px 2px 0px 2px;
-  background-color:#eeeeee;
+.add_button{
+  text-align: center;
+  border-right: 1px solid #ddd;
+  border-left: 1px solid #ddd;
+  background: #eeeeee;
 }
 
-input.dg_add{
-  background-color:#ccffcc;
-  border: 1px solid #999999;
-  margin: 0px;
-  float:none
-}
 
-button.dg_add:hover{
-  background-color: #44cc88;
-  margin: 0px;
+input.dg_add {
+  height: 33px;
+  width: 90px;
+  border-collapse: collapse;
+  background: #aadcaa;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border:0;
+  margin:auto;
+  text-shadow: rgba(255,255,255,.4) 0 1px 0;
+  color: black;
+  font-size: 14px;
+  text-decoration: none;
+  vertical-align: middle;
 }
-
+input.dg_add:hover {
+    border-top-color: #28597a;
+    background: #5b5;
+    color:white;
+    box-shadow: 0 0 2px 2px #666;
+}
+input.dg_add:active {
+    border-top-color: #1b435e;
+    background: #1b435e;
+    outline: 0;
+}
 .querybox{
   margin-top: 20px;
   background-color: #fcfcfc;
   border: 1px solid #cccccc;
   padding-left: 10px;
+}
+
+.hidden_field_control{
+  margin-bottom: 20px;
+}
+
+.no_data{
+  font-size: 19px;
+  line-height: 25px;
+  color: #999999;
+  text-align: center;
+  padding: 10px;
+  border: 1px solid #cccccc;
+  background-color: #eee;
 }
 
 
@@ -265,7 +335,6 @@ button.dg_add:hover{
 
 .edit_child_cell_inactive{
   padding: 3 8 3 8px;
-  background-color: #f4efdd;
   cursor: pointer;
 }
 
@@ -291,3 +360,141 @@ button.dg_add:hover{
 #close_window_button: hover{
 
 }
+
+
+/* THE ICON FONT */
+
+@charset "UTF-8";
+
+@font-face {
+  font-family: "custom-icons";
+  src:url("../fonts/custom-icons.eot");
+  src:url("../fonts/custom-icons.eot?#iefix") format("embedded-opentype"),
+    url("../fonts/custom-icons.ttf") format("truetype"),
+    url("../fonts/custom-icons.svg#custom-icons") format("svg"),
+    url("../fonts/custom-icons.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+
+}
+
+
+[class^="icon-"],
+[class*=" icon-"],
+.icon {
+  font-family: "custom-icons";
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none !important;
+  speak: none;
+  display: inline-block;
+  text-decoration: none;
+  width: 1em;
+  font-size: 1.5em;
+  line-height: 1em;
+  -webkit-font-smoothing: antialiased;
+}
+
+
+@media print{
+
+
+}
+
+/* Search and paging tabs */
+
+.control_tabs {
+  margin-bottom: 10px;
+}
+.control_tabs li {
+  list-style:none;
+  float:left;
+  margin-bottom: -1px;
+}
+
+.control_tabs ul{
+padding-left: 0px;
+}
+.control_tabs ul a {
+  display:block;
+  padding:6px 10px;
+  text-decoration:none!important;
+  margin:1px;
+  margin-left:0;
+  background:#eeeeee;
+}
+.control_tabs ul a:hover {
+  color:#FFF;
+  background:#111;
+}
+.control_tabs ul a.selected {
+  margin-bottom:0;
+  color:#000;
+  background:#dedede;
+  cursor:default;
+}
+.control_tabs div {
+  padding:10px 10px 8px 10px;
+  *padding-top:3px;
+  *margin-top:-15px;
+  clear:left;
+  background:#dedede;
+}
+.control_tabs div a {
+  color:#000;
+  font-weight:bold;
+}
+
+form.search_form, form.paging_form{
+  margin: 0px; padding: 0px;
+}
+
+#search_tab {}
+#paging_tab a {}
+#tabs3 { background:#FF9; }
+
+input.search, select.search, input.paging{
+  border: 0px;
+  padding: 3px;
+  margin: 0px 2px 0px 2px;
+  background-color:#eeeeee;
+}
+
+div.download_button{
+  margin:30px;
+}
+div.download_button a{
+font-size: 19px;
+padding: 10px;
+border: 1px solid #bbbbbb;
+text-decoration: none;
+color: #777777;
+background: #efefef;
+}
+
+div.download_button a:hover{
+background-color: #aaaaff;
+color:#ffffff;
+}
+
+
+/*
+.icon-edit:before {
+content: "a";
+}
+
+.icon-delete:before {
+content: "b";
+}
+
+.icon-new:before {
+content: "c";
+}
+
+.icon-search:before {
+content: "d";
+}
+*/
+
+

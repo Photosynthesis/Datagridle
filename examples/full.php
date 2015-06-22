@@ -1,8 +1,11 @@
 <?php
 include_once('../datagrid.class.php');
+include_once('../../../testit.php');
 
 
-$grid = new datagrid('posts',array('db'=>'dg_test','host'=>'localhost','user'=>'db_user','pass' => 'db_pass'));
+$grid = new datagrid('posts',array('db'=>'dg_test','host'=>'localhost','user'=>'root','pass' => ''));
+
+//$grid->set_setting('mode','embedded');
 
 // Truncate the grid display of this field
 $grid->set_field_attrib('posts','content','truncate','10');
@@ -60,13 +63,18 @@ $grid->add_field('Wacky','Wacky',array(
 
 // Parent tables
 // $grid->add_parent_table($table, $local_key, $foreign_key, $display_field)
-$grid->add_parent_table('categories','category_id','category_id','name');
 $grid->add_parent_table('sections','section_id','section_id','title');
 
 // Child tables
 // table, parent_link_field[, child_link_field][, title]
 $grid->add_child_table('comments','post_id');
-$grid->set_table_attribs('comments',array('edit_url'=>'child.php','display_type'=>'popup'));
+//$grid->set_table_attribs('comments',array('edit_url'=>'child.php','display_type'=>'popup','display_callback' => 'test_tdc'));
+
+$grid->add_parent_table('categories','category_id','category_id','name');
+
+function test_tdc($data,$url){
+  return '<div class="edit_child_cell_inactive" onclick="show_child_grid_popup(\''.$url.'\')">View/edit comments. Yeah!</div>';
+}
 
 // Set editing privileges
 $grid->set_setting('privileges','edit,add');
@@ -78,7 +86,7 @@ echo $grid->grid();
 
 //testit('SESSION',$_SESSION);
 //testit('POST',$_POST);
-//testit('showtests');
+testit('showtests');
 
 
 // Callback function definitions
@@ -96,4 +104,6 @@ function the_save_callback($table,$field,$value,$row){
  return $value.' (plus some additional text)';
 }
 
+global $debug_output;
+echo $debug_output;
 ?>
