@@ -852,7 +852,9 @@ function sort(){
                   'fid' => $table.$display_field,
                   'relation' => 'parent_secondary', // Relation values added 2016-12-07, used in grid_template for setting up Ajax edit for parent table values (in parent record title column). Don't like this. It's too ad hoc. Need a better, more consistent way of notating table and field relations...
                   'relation_key_field' => $foreign_key,
-                  'relation_table' => $table
+                  'relation_table' => $table,
+                  'table' => $table,
+                  'field' => $display_field
                   );
 
     $this->fields[$table.$display_field] = $this->struct[$table]['fields'][$display_field];
@@ -2646,20 +2648,20 @@ function sort(){
 
         foreach ($row as $field=>$value) {
 
-          $atts = "";
+          $atts = array();
 
           if($meta[$field]['display_style']){
-            $atts .= ' style="'.$meta[$field]['display_style'].'"';
+            $atts['style'] = $meta[$field]['display_style'];
           }
 
           if($meta[$field]['display_class']){
-            $atts .= ' class="'.$meta[$field]['display_class'].'"';
+            $atts['class'] = $meta[$field]['display_class'];
           }
 
           if($meta[$field]['display_id']){
-            $atts .= ' id="'.$meta[$field]['display_id'].'"';
+            $atts['id'] = $meta[$field]['display_id'];
           }else{
-            $atts .= ' id="'.$meta[$field]['fid'].$key.'"';
+            $atts['id'] = $meta[$field]['fid'].$key;
           }
 
           /* Ajax, added 2016-12-06 */
@@ -2673,14 +2675,21 @@ function sort(){
               $data_value = $value;
             }
 
-            $atts .= ' onDblClick="ajaxEdit(this,\''.$fid.'\',\''.$key.'\')"';
-            $atts .= ' data-id="'.$key.'" data-fid="'.$fid.'" data-value="'.$data_value.'"';
+            $atts['onDblClick'] = "ajaxEdit(this,'$fid','$key')";
+            $atts['data-id'] = $key;
+            $atts['data-fid'] = $fid;
+            $atts['data-value'] = $data_value;
+
+            $atts['class'] .= " ajax-edit";
           }
 
-
+          $ats_str = '';
+          foreach($atts as $at => $val){
+            $ats_str .= $at.'="'.$val.'" ';
+          }
 
           $out .= '<td class="datafield">';
-          $out .= "<div$atts>\n";
+          $out .= "<div $ats_str>\n";
           $out .= $value;
           $out .= '</div>';
           $out .= '</td>';
@@ -2826,7 +2835,7 @@ function sort(){
   }
 
   function ajax_save(){
-    if($this->GET('fid') && $this->GET('value') && $this->GET('id')){
+    if($this->GET('fid') && $this->GET('id')){
       $tf = $this->fid_to_table_and_field($this->GET('fid'));
       $value = $this->db->escape($this->GET('value'));
       $id = $this->db->escape($this->GET('id'));
@@ -2860,6 +2869,20 @@ function sort(){
     $out['table'] = $field_array['table'];
     $out['field'] = $field_array['field'];
     return $out;
+  }
+
+  function enable_ajax($fids = null){
+    foreach($this->fields as $fid => $ats){
+      if($ats['type'] == 'text' || $ats['type'] == 'textarea' || substr($ats['type'],0,6) == 'select'){
+        if(is_array($fids)){
+          if(in_array($fid,$fids)){
+            $this->set_field_attrib($ats['table'],$ats['field'],'enable_ajax',true);
+          }
+        }else{
+          $this->set_field_attrib($ats['table'],$ats['field'],'enable_ajax',true);
+        }
+      }
+    }
   }
 
 }

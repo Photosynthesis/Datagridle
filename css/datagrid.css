@@ -208,7 +208,7 @@ a.hidefield{
   height:200px;
 }
 
-#edit_form button{
+#edit_form button.dg_edit{
   margin-left: 20px;
   float:left;
   padding: 1px 15px 1px 15px;
@@ -478,6 +478,22 @@ background-color: #aaaaff;
 color:#ffffff;
 }
 
+.ajax-edit{
+  min-height: 20px;
+  position:relative;
+}
+
+.ajax-edit textarea, .ajax-edit input[type=text], .ajax-edit select{
+  border: 0px none;
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.ajax-edit select option, .ajax-edit select{
+  padding:8px;
+}
+
 
 /*
 .icon-edit:before {
@@ -496,5 +512,3 @@ content: "c";
 content: "d";
 }
 */
-
-

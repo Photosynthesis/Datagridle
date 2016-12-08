@@ -142,6 +142,11 @@ function ajaxEdit(parent_el,fid,id){
   field = fields[fid];
   if(field.type == 'select'){
       el = document.createElement('select');
+
+      parent_el.parentElement.style.padding = 0;
+      el.style.width = parent_el.parentElement.offsetWidth;
+      el.style.height = parent_el.parentElement.offsetHeight;
+
       el.name = field.name;
       el.dataset.fid = fid;
       el.dataset.rowId = id;
@@ -154,8 +159,16 @@ function ajaxEdit(parent_el,fid,id){
       el.value = parent_el.dataset.value;
       parent_el.innerHTML = '';
       parent_el.appendChild(el);
+      parent_el.parentElement.style.width = el.style.width;
+
   }else if(field.type == 'textarea'){
     el = document.createElement('textarea');
+
+    el.style.padding = parent_el.parentElement.style.padding;
+    parent_el.parentElement.style.padding = 0;
+    el.style.width = parent_el.parentElement.offsetWidth;
+    el.style.height = parent_el.parentElement.offsetHeight;
+
     el.value = parent_el.dataset.value;
     el.name = field.name;
     el.dataset.fid = fid;
@@ -163,10 +176,17 @@ function ajaxEdit(parent_el,fid,id){
     el.addEventListener ("blur",ajaxSave, false);
     parent_el.innerHTML = '';
     parent_el.appendChild(el);
+    parent_el.parentElement.style.width = el.style.width;
   }else{
     el = document.createElement('input');
     el.type = "text";
     el.value = parent_el.dataset.value;
+
+    el.style.padding = "8px 3px 8px 3px"; //parent_el.parentElement.style.padding;
+    parent_el.parentElement.style.padding = 0;
+    el.style.width = parent_el.parentElement.offsetWidth;
+    el.style.height = parent_el.parentElement.offsetHeight;
+
     el.name = field.name;
     el.dataset.fid = fid;
     el.dataset.rowId = id;
@@ -174,6 +194,7 @@ function ajaxEdit(parent_el,fid,id){
     el.onBlur = "ajaxSave(this)";
     parent_el.innerHTML = '';
     parent_el.appendChild(el);
+    parent_el.parentElement.style.width = el.style.width;
   }
 
   function ajaxSave(triggerEvent){
@@ -183,6 +204,8 @@ function ajaxEdit(parent_el,fid,id){
     parent_el = field_el.parentElement;
     var params = gpfx+'action=ajax_save&'+gpfx+'fid=' + fid + '&'+gpfx+'value=' + field_el.value + '&'+gpfx+'id=' + rowId;
     parent_el.id = fid+rowId;
+    parent_el.parentElement.style.padding = field_el.style.padding;
+    parent_el.parentElement.style.width = "";
     parent_el.innerHTML = "Saving...";
     var ajaxSaveReq = $.ajax({
       url: thisUrl,
