@@ -3,10 +3,12 @@
 class database{
   var $link;
   var $db;
+  var $db_name;
   var $global_debug_function = 'testit';
   var $debug_level = 2;
   var $errors = array();
-  
+  var $escape_inserts = true;
+
   function __construct($credentials){
 
     if(is_resource($credentials)){
@@ -14,14 +16,16 @@ class database{
         $this->link = $credentials;
        }
     }else{
+      $this->db_name = $credentials['db'];
+
       $this->link = mysqli_connect($credentials['host'],$credentials['user'],$credentials['pass']);
-      
+
       if($this->link == false){
-        $this->error('__construct()','DB connection failed!');
+        $this->error('__construct()','DB connection failed!',mysqli_error());
         return;
       }
     }
-    
+
   $this->db = mysqli_select_db($this->link,$credentials['db']);
     if (!$this->link || !$this->db) {
         $this->error('__construct()',mysqli_error($this->link));
@@ -44,14 +48,14 @@ class database{
     if($this->check_sql_flag($table_or_sql)){
       $sql = $this->check_sql_flag($table_or_sql);
     }else{
-      $fields ? $sfields = $fields : $fields = '*';
+      $fields ? $fields = $fields : $fields = '*';
       $sql = "SELECT $fields FROM $table_or_sql WHERE $cond";
     }
 
     $this->dbg('db->select_one() SQL',$sql);
 
     $result = mysqli_query($this->link,$sql);
-    
+
     if (!$result) {
             $this->error('select_one()',mysqli_error($this->link),$sql);
     }else{
@@ -70,23 +74,23 @@ class database{
       if($cond)$condsql = " WHERE $cond";
       $sql = "SELECT $fields FROM $table_or_sql ".$condsql.$sortby.$limitsql;
     }
-    
+
     $data = array();
 
     $this->dbg("db->select SQL",$sql);
     $result = mysqli_query($this->link,$sql);
-    
+
     if (!$result) {
       $this->error('select()',mysqli_error($this->link),$sql);
       return;
     }
 
     if($key){
-      while ($row = mysqli_fetch_array($result, MYSQL_ASSOC)) {
+      while ($row = mysqli_fetch_array($result, MYSQLI_ASSOC)) {
         $data[$row[$key]] = $row;
       }
     }else{
-      while ($row = mysqli_fetch_array($result, MYSQL_ASSOC)) {
+      while ($row = mysqli_fetch_array($result, MYSQLI_ASSOC)) {
          $data[] = $row;
       }
     }
@@ -96,25 +100,25 @@ class database{
   // Select all the records from a table
   function select_all($table,$key = NULL){
     $sql = "SELECT * FROM $table";
-    
+
     $this->dbg("db->select_all","Table: $table");
 
     $result = mysqli_query($this->link,$sql);
-    
+
     if (!$result) {
        $this->error('select_all()',mysqli_error($this->link),$sql);
        return;
     }
-    
+
     $data = Array();
     if($key){
-      while ($row = mysqli_fetch_array($result, MYSQL_ASSOC)) {
+      while ($row = mysqli_fetch_array($result, MYSQLI_ASSOC)) {
         $keyval = $row[$key];
         $data[$keyval] = $row;
       }
 
     }else{
-      while ($row = mysqli_fetch_array($result, MYSQL_ASSOC)) {
+      while ($row = mysqli_fetch_array($result, MYSQLI_ASSOC)) {
         $data[] = $row;
       }
     }
@@ -129,9 +133,9 @@ class database{
       if($i == 0){
         // Select from the first table
       	$sql= "SELECT * FROM $value WHERE $conds";
-      	
+
       	$this->dbg("db_select_ar SQL $i",$sql);
-      	
+
         $result = mysqli_query($this->link,$sql);
        if (!$result) {
           $this->error('select_ar()',mysqli_error($this->link),$sql);
@@ -151,11 +155,35 @@ class database{
           $this->error('select_ar()',mysqli_error($this->link),$sql);
           return;
         }
-        
+
         $data[$value] = mysqli_fetch_assoc($result);
       }
     }
     return $data;
+  }
+
+  // Select a single value from the DB
+  function select_cell($table_or_sql, $cond = NULL, $field = NULL){
+
+    if($this->check_sql_flag($table_or_sql)){
+      $sql = $this->check_sql_flag($table_or_sql);
+    }else{
+
+      $sql = "SELECT $field FROM $table_or_sql WHERE $cond";
+    }
+
+    $this->dbg('db->select_cell() SQL',$sql);
+
+    $result = mysqli_query($this->link,$sql);
+
+    if (!$result) {
+            $this->error('select_cell()',mysqli_error($this->link),$sql);
+    }else{
+      $data = mysqli_fetch_assoc($result);
+      if(is_array($data)){
+        return array_pop($data);
+      }
+    }
   }
 
   # Get one field from the DB and retun as single level array
@@ -170,21 +198,21 @@ class database{
     }
 
     $this->dbg("db->select_field query",$sql);
-    
+
     $result = mysqli_query($this->link,$sql);
-    
+
     if(!$result) {
       $this->error('select_field()',mysqli_error($this->link),$sql);
       return;
     }
 
     if($key){
-      while ($row = mysqli_fetch_array($result, MYSQL_ASSOC)) {
+      while ($row = mysqli_fetch_array($result, MYSQLI_ASSOC)) {
         $data[$row[$key]] = $row[$field];
       }
 
     }else{
-      while ($row = mysqli_fetch_array($result, MYSQL_ASSOC)) {
+      while ($row = mysqli_fetch_array($result, MYSQLI_ASSOC)) {
          $data[] = $row[$field];
       }
     }
@@ -201,9 +229,12 @@ class database{
       $values = '';
       $i = '';
       foreach ($data as $key=>$value) {
-      $fields .= $i." $key";
-      $values .= $i." '$value'";
-      $i = ',';
+        if($this->escape_inserts == true){
+          $value = $this->escape_str($value);
+        }
+        $fields .= $i." $key";
+        $values .= $i." '$value'";
+        $i = ',';
       }
       $sql = "INSERT INTO $table_or_sql ($fields) VALUES ($values)";
     }
@@ -221,7 +252,7 @@ class database{
     }
 
   }
-  
+
   function update($table_or_sql,$cond = NULL, $data = NULL){
 
     if($sql = $this->check_sql_flag($table_or_sql)){
@@ -241,7 +272,7 @@ class database{
     }
 
     $this->dbg("db->update",$sql);
-    
+
     if(mysqli_query($this->link,$sql)){
       return true;
     }else{
@@ -256,7 +287,7 @@ class database{
       $sql = "DELETE from $table_or_sql WHERE $cond LIMIT 1";
     }
     $this->dbg('db_delete SQL',$sql);
-    
+
     if(mysqli_query($this->link,$sql)){
       return true;
     }else{
@@ -282,10 +313,10 @@ class database{
       return $num_rows;
     }
   }
-  
+
   function exec_sql($sql){
     $result = mysqli_query($this->link,$sql);
-    
+
     if(!$result){
       $this->error('exec_sql()',mysqli_error($this->link),$sql);
     }else{
@@ -301,24 +332,24 @@ class database{
     }
     return $result;
   }
-  
+
   function get_ai_value($table){
     $sql = "SHOW TABLE STATUS LIKE '$table'";
     $result = mysqli_query($this->link,$sql);
-    
+
     if(!$result){
       $this->error('get_ai_value()',mysqli_error($this->link),$sql);
       return;
     }
-    
+
     $row = mysqli_fetch_array($result);
     $id = $row['Auto_increment'];
     mysqli_free_result($result);
-    
+
     return $id;
 
   }
-  
+
   function dbg($var,$val,$status = 'DEBUG'){
     if(is_callable($this->global_debug_function)){
       $dbgf = $this->global_debug_function;
@@ -326,7 +357,7 @@ class database{
     }else if($this->debug_level == 2 || ($this->debug_level == 1 && $status == 'error')){
 
        global $debug_output;
-       
+
        $out = "<b>[".strtoupper($status)."] $var:</b>";
        if (is_array($val)){
           $out .= "<pre>";
@@ -339,18 +370,19 @@ class database{
       $out .= "<br /><br />";
 
       $debug_output .= $out;
-         
+
     }
   }
-  
+
   function error($function,$error = NULL,$sql = NULL){
     $this->errors[] = array(
       'function' => $function,
       'error' => $error,
       'sql' =>  $sql
     );
+    $this->dbg('Database error: '.$error.' in',$sql);
   }
-  
+
   function text_errors(){
     $out = '';
     foreach ($this->errors as $key=>$er) {
@@ -366,6 +398,26 @@ class database{
     }
     return $out;
   }
-  
+
+  function is_error(){
+    if(count($this->errors) > 0){
+      return $this->text_errors();
+    }else{
+      return false;
+    }
+  }
+
+  function escape($str){
+    return mysqli_real_escape_string($this->link,$str);
+  }
+
+  function escape_str($string){
+    if (!get_magic_quotes_gpc()){
+      return addslashes($string);
+    }else{
+      return $string;
+    }
+  }
+
 }
 ?>
