@@ -2,6 +2,24 @@
 $content_css = $_GET['content_css'];
 $height = $_GET['height'];
 $width = $_GET['width'];
+if($_GET['version'] == 'new'){
+?>
+tinyMCE.init({
+selector:'textarea#mceEditor',
+plugins: ['advlist autolink link image lists charmap print preview hr anchor pagebreak spellchecker searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media nonbreaking save table contextmenu directionality emoticons template paste textcolor'
+],
+toolbar: 'link image code insertfile visualblocks | styleselect | bold italic | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent',
+menubar: false,
+file_browser_callback : 'tinyBrowser',
+height:"<?php echo $height; ?>",
+width:"<?php echo $width; ?>",
+theme_advanced_statusbar_location : "bottom",
+theme_advanced_resizing : true,
+save_onsavecallback: 'saveCallback',
+content_css: "<?php echo $content_css; ?>"
+});
+<?php
+}else{
 ?>
 tinyMCE.init({
   theme: "advanced",
@@ -25,5 +43,6 @@ tinyMCE.init({
   save_onsavecallback: 'saveCallback'
 
 });
-
-
+<?php
+}
+?>

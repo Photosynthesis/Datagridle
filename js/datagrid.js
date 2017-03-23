@@ -103,9 +103,9 @@ function showhide_div(id) {
 }
 
 
-function show_child_grid(id,url){
+function show_child_grid(id,table,url){
 
-  grid_id = '#child_grid_'+id;
+  grid_id = '#child_grid_'+table+'_'+id;
 
   if($(grid_id).html() == false){
     iFrameHtml = "<td colspan=\"100\"><iframe src="+url+" style=\"width: 100%; height: 400px; border: 0px;\" seamless/></iframe></td>";
@@ -113,9 +113,9 @@ function show_child_grid(id,url){
     $(grid_id).html(iFrameHtml);
   }
 
-  cell_id = '#child_grid_link_cell_'+id;
-  show_link_id = '#show_child_grid_'+id;
-  hide_link_id = '#hide_child_grid_'+id;
+  cell_id = '#child_grid_link_cell_'+table+'_'+id;
+  show_link_id = '#show_child_grid_'+table+'_'+id;
+  hide_link_id = '#hide_child_grid_'+table+'_'+id;
   $(grid_id).toggle('slow');
   $(show_link_id).toggle();
   $(hide_link_id).toggle();
@@ -140,7 +140,7 @@ function show_child_grid_popup(url,other_params){
 function ajaxEdit(parent_el,fid,id){
 
   field = fields[fid];
-  if(field.type == 'select'){
+  if(field.type.substr(0, 6) == 'select' || field.type.substr(0, 12) == 'staticselect'){
       el = document.createElement('select');
 
       parent_el.parentElement.style.padding = 0;
@@ -150,12 +150,14 @@ function ajaxEdit(parent_el,fid,id){
       el.name = field.name;
       el.dataset.fid = fid;
       el.dataset.rowId = id;
+
       el.addEventListener ("change",ajaxSave, false);
       options = field.options;
       for (key in options) {
         var opt = new Option(options[key],key);
         el.options.add(opt);
       }
+
       el.value = parent_el.dataset.value;
       parent_el.innerHTML = '';
       parent_el.appendChild(el);
@@ -182,7 +184,7 @@ function ajaxEdit(parent_el,fid,id){
     el.type = "text";
     el.value = parent_el.dataset.value;
 
-    el.style.padding = "8px 3px 8px 3px"; //parent_el.parentElement.style.padding;
+    el.style.padding = "3px 8px 3px 8px "; //parent_el.parentElement.style.padding;
     parent_el.parentElement.style.padding = 0;
     el.style.width = parent_el.parentElement.offsetWidth;
     el.style.height = parent_el.parentElement.offsetHeight;

@@ -3,7 +3,7 @@ include_once('../datagrid.class.php');
 include_once('../../../testit.php');
 
 
-$grid = new datagrid('posts',array('db'=>'dg_test','host'=>'localhost','user'=>'root','pass' => ''));
+$grid = new datagrid('posts',array('db'=>'dg_test','host'=>'localhost','user'=>'root','pass' => 'wunderbar'));
 
 //$grid->set_setting('mode','embedded');
 
@@ -34,7 +34,7 @@ $grid->set_field_attribs('posts','url', array(
     'display_style'=> 'width:150px; overflow:auto;',
     'display_class' => 'wonky',
     'notes' => 'Styled form element'));
-    
+
 // Using edit, display, and save callback functions
 $grid->set_field_attribs('posts','other_function',array(
     'display_callback' => 'the_display_callback',
@@ -68,7 +68,9 @@ $grid->add_parent_table('sections','section_id','section_id','title');
 // Child tables
 // table, parent_link_field[, child_link_field][, title]
 $grid->add_child_table('comments','post_id');
-//$grid->set_table_attribs('comments',array('edit_url'=>'child.php','display_type'=>'popup','display_callback' => 'test_tdc'));
+$grid->set_table_attribs('comments',array('edit_url'=>'child.php', 'display_type'=>'iframe','title'=>'Details'));
+
+//$grid->set_table_attribs('comments',array('edit_url'=>'child.php','display_type'=>'iframe','display_callback' => 'test_tdc'));
 
 $grid->add_parent_table('categories','category_id','category_id','name');
 

@@ -1,11 +1,8 @@
 <?php
-session_start();
-include_once('../../../url.class.php');
-include_once('../../../testit.php');
-include_once('../../../database.class.php');
 include_once('../datagrid.class.php');
+include_once('../../../testit.php');
 
-$db = new database(array('db'=>'dg_test','host'=>'localhost','user'=>'root','pass' => ''));
+$db = array('db'=>'dg_test','host'=>'localhost','user'=>'root','pass' => 'wunderbar');
 
 $grid = new datagrid('comments',$db);
 //$grid->set_setting('mode','compact');

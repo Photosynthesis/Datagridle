@@ -265,19 +265,22 @@ class datagrid{
   }
 
   function get_search_fields(){
+    // TODO: modify this to not include child tables...
 
     if($this->setting('search_fields')){
       $search_fields = $this->setting('search_fields');
     }else{
+      $search_fields = array();
       foreach ($this->struct as $t=>$t_ats) {
-         $this->dbg("Struct[$t]['fields']",$t_ats['fields']);
-         foreach ($t_ats['fields'] as $f=>$f_ats) {
-         	 $search_fields[$t.'.'.$f] = $f_ats;
+         $this->dbg("Struct[$t]",$t_ats);
+         if($t_ats['type'] != 'child'){
+           foreach ($t_ats['fields'] as $f=>$f_ats) {
+           	 $search_fields[$t.'.'.$f] = $f_ats;
+           }
          }
       }
-
     }
-    $this->dbg('Searcdh fields',$search_fields);
+    $this->dbg('Search fields',$search_fields);
     return $search_fields;
   }
 
@@ -1233,67 +1236,6 @@ function sort(){
   return "<tr id=\"".$this->rowcount."\" class=\"$row_class\" onClick=\"highlightRow('".$this->rowcount."','$row_class')\">";
   }
 
-
-  function show_cell($field,$value,$fieldattribs,$row,$keyval){
-
-      dbg("Show_cell called with attribs",$fieldattribs);
-
-      if($fieldattribs['truncate']){
-         $trunc_break = '';
-         $trunc_pad = '...';
-         $value = $this->truncate($value,$fieldattribs['truncate'],$trunc_break,$trunc_pad);
-      }
-
-
-      if($fieldattribs['display_style']){
-        $style = ' style="'.$fieldattribs['display_style'].'"';
-      }
-      if($fieldattribs['display_class']){
-        $class = ' class="'.$fieldattribs['display_class'].'"';
-      }
-      $out .= '<td class="datafield">';
-      $out .= "<div$class $style>\n";
-
-
-
-      // CALLBACK FIELDS (Display output of callback function)
-      if($fieldattribs['display_callback']){
-        $function = $fieldattribs['display_callback'];
-
-        if(is_callable($function)){
-          $out .= $function($this->get_primary_table(),$field,$value,$row,$keyval);
-        }else{
-          $this->dbg('Error in display callback. Function doesn\'t exist',$function);
-          $out .= $value;
-        }
-
-      }
-
-      // DISPLAY TEMPLATE
-      else if($fieldattribs['display_template']){
-        $code = $fieldattribs['display_template'];
-
-        foreach ($row as $key=>$value) {
-        	$code = str_replace('['.$key.']',$value,$code);
-        }
-
-        $out .= $code;
-
-      }else{
-
-        if($fieldattribs['display_type'] == 'currency'){
-          $out .= $this->currency_format($value);
-        }else{
-          $out .= $value;
-        }
-
-
-      }
-      $out .= "
-          </div></td>";
-    return $out;
-  }
-
   function edit(){
 
     $non_array_input_count = 0;
@@ -2004,8 +1946,10 @@ function sort(){
      $child_title = $this->struct[$table]['title'];
      $display_type = $this->struct[$table]['display_type'];
 
+     testit('$table in show_child_grid',$table);
+
     $out .= '
-    <tr id="child_grid_'.$link_value.'" class="child_grid" style="display: none;">
+    <tr id="child_grid_'.$table.'_'.$link_value.'" class="child_grid" style="display: none;">
     ';
 
 
@@ -2447,10 +2391,25 @@ function sort(){
 
               $meta[$keyval][$aliased_field] = $fieldattribs;
               $meta[$keyval][$aliased_field]['fid'] = $fid;
+              $meta[$keyval][$aliased_field]['raw_value'] = $value; // Raw value for ajax edit
+
+              testit("Saving raw value to meta array",$value);
 
               if($tableinfo['type'] == 'parent'){
                 $meta[$keyval][$aliased_field]['relation_link_value'] = $row[$tableinfo['local_key']];
               }
+
+              // This is necessary for ajax, but redundent with logic in edit(). Better solution needed...
+              if(substr($fieldattribs['type'],0,12) == 'staticselect'){
+                $options_ar_1 = explode(',',substr($fieldattribs['type'],13));
+                $ss_options = array();
+                foreach($options_ar_1 as $okey => $ovalue){
+                  $ss_options[$ovalue] = $ovalue;
+                }
+                $this->struct[$table]['fields'][$aliased_field]['options'] = $ss_options;
+                $this->fields[$fid]['options'] = $ss_options;
+              }
+
 
 
               // Table headers
@@ -2519,38 +2478,38 @@ function sort(){
           }
         }else{
 
+          $parent_link_field = $tableinfo['parent_link_field'];
+          $link_value = $row[$parent_link_field];
 
-           $link_value = $row[$tableinfo['parent_link_field']];
 
+          $GET_pfx = $tableinfo['GET_pfx'];
+          $child_title = $this->struct[$table]['title'];
 
-            $GET_pfx = $tableinfo['GET_pfx'];
-            $child_title = $this->struct[$table]['title'];
+          $this->display_headers[$table.'child'] = array(
+          'title' => $child_title,
+          'type' => 'child'
+          );
 
-           $this->display_headers[$table.'child'] = array(
-            'title' => $child_title,
-            'type' => 'child'
-           );
-
-             $child_url_vars = array(
-                'parent_link_field' => $tableinfo['parent_link_field'],
-                'child_link_field' => $tableinfo['child_link_field'],
-                'link_value' => $link_value,
-                'mode' => 'child',
-                'display_type' => $tableinfo['display_type']
-             );
-             if($tableinfo['edit_url']){
-               $child_url = $tableinfo['edit_url'].'?';
-             }else{
-               $database_name = $this->db->db_name;
-               $child_url = $this->dg_relative_path.'prototype_child.php?';
-               $child_url .= 'table='.$table.'&database='.$database_name.'&';
-               $child_url .= "token=".$this->get_sub_token()."&dg_id=".$this->unique_dg_id."&";
-             }
-             $join = '';
-             foreach ($child_url_vars as $key=>$value) {
-              	 $child_url .= $join.$GET_pfx.$key.'='.$value;
-              	 $join = '&';
-             }
+          $child_url_vars = array(
+            'parent_link_field' => $tableinfo['parent_link_field'],
+            'child_link_field' => $tableinfo['child_link_field'],
+            'link_value' => $link_value,
+            'mode' => 'child',
+            'display_type' => $tableinfo['display_type']
+          );
+          if($tableinfo['edit_url']){
+            $child_url = $tableinfo['edit_url'].'?';
+          }else{
+            $database_name = $this->db->db_name;
+            $child_url = $this->dg_relative_path.'prototype_child.php?';
+            $child_url .= 'table='.$table.'&database='.$database_name.'&';
+            $child_url .= "token=".$this->get_sub_token()."&dg_id=".$this->unique_dg_id."&";
+          }
+          $join = '';
+          foreach ($child_url_vars as $key=>$value) {
+          	 $child_url .= $join.$GET_pfx.$key.'='.$value;
+          	 $join = '&';
+          }
 
           if($tableinfo['display_callback']){
             $tdc_func = $tableinfo['display_callback'];
@@ -2566,12 +2525,12 @@ function sort(){
           }elseif($tableinfo['display_type'] == 'iframe'){
 
               $out[$keyval][$table.'child'] = '
-<div class="edit_child_cell_inactive" id="child_grid_link_cell_'.$link_value.'">
-<span id="show_child_grid_'.$link_value.'" style="display:inline" onclick="javascript:show_child_grid(\''.$link_value.'\',\''.$child_url.'\');">View/edit&nbsp;'.$tableinfo['title'].'</span>
-<span id="hide_child_grid_'.$link_value.'" style="display:none"  onclick="javascript:show_child_grid(\''.$link_value.'\');">Hide&nbsp;'.$tableinfo['title'].'</span>
+<div class="edit_child_cell_inactive" id="child_grid_link_cell_'.$table.'_'.$link_value.'">
+<span id="show_child_grid_'.$table.'_'.$link_value.'" style="display:inline" onclick="javascript:show_child_grid(\''.$link_value.'\',\''.$table.'\',\''.$child_url.'\');">View/edit&nbsp;'.$tableinfo['title'].'</span>
+<span id="hide_child_grid_'.$table.'_'.$link_value.'" style="display:none"  onclick="javascript:show_child_grid(\''.$link_value.'\',\''.$table.'\');">Hide&nbsp;'.$tableinfo['title'].'</span>
 </div>
 ';
-              $meta[$keyval]['before_next_row'] = $this->show_child_grid($table,$link_value);
+              $meta[$keyval]['before_next_row'] .= $this->show_child_grid($table,$link_value);
 
           }
         }
@@ -2672,13 +2631,13 @@ function sort(){
               $data_value = $meta[$field]['relation_link_value'];
             }else{
               $fid = $meta[$field]['fid'];
-              $data_value = $value;
+              $data_value = $meta[$field]['raw_value'];
             }
 
             $atts['onDblClick'] = "ajaxEdit(this,'$fid','$key')";
             $atts['data-id'] = $key;
             $atts['data-fid'] = $fid;
-            $atts['data-value'] = $data_value;
+            $atts['data-value'] = htmlspecialchars($data_value);
 
             $atts['class'] .= " ajax-edit";
           }
@@ -2873,7 +2832,10 @@ function sort(){
 
   function enable_ajax($fids = null){
     foreach($this->fields as $fid => $ats){
-      if($ats['type'] == 'text' || $ats['type'] == 'textarea' || substr($ats['type'],0,6) == 'select'){
+      if($ats['type'] == 'text'
+        || $ats['type'] == 'textarea'
+        || substr($ats['type'],0,6) == 'select'
+        || substr($ats['type'],0,12) == 'staticselect' ){
         if(is_array($fids)){
           if(in_array($fid,$fids)){
             $this->set_field_attrib($ats['table'],$ats['field'],'enable_ajax',true);
