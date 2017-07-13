@@ -199,7 +199,7 @@ class datagrid{
     if(!$structure){
       $this->primary_table = $primary_table;
       $this->auto_detect_fields($primary_table);
-    }else {
+    }else{
       $this->struct = $structure;
     }
 
@@ -215,7 +215,8 @@ class datagrid{
         'mode' => 'full',
         'tmce_version' => '',
         'global_debug_function' => 'testit',
-        'unique_GET_prefix' => $this->unique_dg_id."_"
+        'unique_GET_prefix' => $this->unique_dg_id."_",
+        'search_child_tables' => true
       );
 
       if($settings){
@@ -253,7 +254,7 @@ class datagrid{
     $this->target_url->set_query_pair($ugp.'child_link_field',$child_link_field);
     $this->target_url->set_query_pair($ugp.'link_value',$link_value);
 
-    $this->detailssql = $this->primary_table.'.'.$parent_link_field." = '$link_value'";
+    $this->detailssql = $this->primary_table.'.'.$child_link_field." = '$link_value'";
 
     $this->set_field_attribs($this->primary_table,$child_link_field,array(
           'type' => 'readonly,hidden',
@@ -265,7 +266,6 @@ class datagrid{
   }
 
   function get_search_fields(){
-    // TODO: modify this to not include child tables...
 
     if($this->setting('search_fields')){
       $search_fields = $this->setting('search_fields');
@@ -273,9 +273,11 @@ class datagrid{
       $search_fields = array();
       foreach ($this->struct as $t=>$t_ats) {
          $this->dbg("Struct[$t]",$t_ats);
-         if($t_ats['type'] != 'child'){
+         if($t_ats['type'] != 'child' || $this->setting('search_child_tables') == true){
            foreach ($t_ats['fields'] as $f=>$f_ats) {
-           	 $search_fields[$t.'.'.$f] = $f_ats;
+             if($f_ats['type'] != 'derivative'){
+           	   $search_fields[$t.'.'.$f] = $f_ats;
+             }
            }
          }
       }
@@ -686,10 +688,13 @@ function sort(){
 
       $intermed = '';
       foreach($update_data as $field => $value){
-        $esc_value = $this->escape_str($value);
-        $sqlfields .= "$intermed $field";
-        $sqlvalues .= "$intermed '$esc_value'";
-        $intermed = ',';
+        echo $this->dbg('Auto Inc',$attribs['auto_increment']);
+        if($attribs['auto_increment'] !== true || $value != ''){ // Don't try to insert blank strings for AI fields (duh!)
+          $esc_value = $this->escape_str($value);
+          $sqlfields .= "$intermed $field";
+          $sqlvalues .= "$intermed '$esc_value'";
+          $intermed = ',';
+        }
       }
       $insertsql .= "($sqlfields) VALUES ($sqlvalues)";
 
@@ -735,7 +740,7 @@ function sort(){
     }
 
     if($position_type == "end"){
-      add_field($table,$field,$temp_tbl);
+      $this->add_field($table,$field,$temp_tbl);
     }
 
     if($position_type && $relative_field){
@@ -752,6 +757,10 @@ function sort(){
     if(!$attribs['fid']){
       $attribs['fid'] = $table.$field;
     }
+
+    $attribs['table'] = $table;
+    $attribs['field'] = $field;
+
     $this->set_field_attribs($table,$field,$attribs);
   }
 
@@ -811,6 +820,7 @@ function sort(){
   function remove_field($table,$field){
      # [STRUCT FLAG]
     unset($this->struct[$table]['fields'][$field]);
+    unset($this->fields[$table.$field]);
   }
 
   function add_parent_table($table,$local_key,$foreign_key,$display_field = null){
@@ -909,6 +919,16 @@ function sort(){
       $attribs = array();
 
       $attribs['maxlength'] = substr(strrchr($row['Type'], "("), 1, -1);
+      if(strpos($row['Type'],"(") !== false){
+        $attribs['db_type'] = substr($row['Type'],0,strpos($row['Type'],"("));
+      }else{
+        $attribs['db_type'] = $row['Type'];
+      }
+
+      if($row['Extra'] == 'auto_increment'){
+        $attribs['auto_increment'] = true;
+      }
+
       $name = $row['Field'];
 
       if($row['Key'] == 'PRI'){
@@ -975,7 +995,14 @@ function sort(){
             $primary_table = $table;
           }
 
-          foreach($this->get_table_fields($table) as $field => $attribs){
+
+          $table_fields = $this->get_table_fields($table);
+
+          if(!is_array($table_fields)){
+            $this->exit_error('Invalid table: '.$table);
+          }
+
+          foreach($table_fields as $field => $attribs){
             if ($attribs['display_type'] != 'noquery' && !$attribs['noquery'] && $attribs['type'] != 'derivative'){
               // Add alias for fields in non-primary table to avoid name conflicts
               if($table != $primary_table){
@@ -1060,7 +1087,7 @@ function sort(){
   }
 
   function grid(){
-
+    // Delete grid-related GET items from the target URL
     $ugp = $this->settings['unique_GET_prefix'];
 
     foreach ($this->target_url->query_parts as $key=>$value) {
@@ -1075,8 +1102,6 @@ function sort(){
     }
 
     $out = '';
-
-
 
     if ($this->POST('action') == 'update' || $this->POST('action') == 'insert'){
       if($this->check_privilege('edit')){
@@ -1429,7 +1454,7 @@ function sort(){
 
             $out .= "
             $fieldlabel
-            <div style=\"margin-top: 5px;\">
+            <div class=\"dg-tinymce-container\">
             <textarea  name=\"data[$field]\"
             class=\"mceEditor\" id=\"mceEditor\">$row[$field]</textarea>
             $maxlength </div>
@@ -2393,8 +2418,6 @@ function sort(){
               $meta[$keyval][$aliased_field]['fid'] = $fid;
               $meta[$keyval][$aliased_field]['raw_value'] = $value; // Raw value for ajax edit
 
-              testit("Saving raw value to meta array",$value);
-
               if($tableinfo['type'] == 'parent'){
                 $meta[$keyval][$aliased_field]['relation_link_value'] = $row[$tableinfo['local_key']];
               }
@@ -2517,20 +2540,32 @@ function sort(){
             $out[$keyval][$table.'child'] = $tdc_func($child_url_vars,$child_url);
 
 
-          }elseif($tableinfo['display_type'] == 'popup'){
+          }else{
+            if($tableinfo['show_child_link_text']){
+              $show_child_link_text = $tableinfo['show_child_link_text'];
+            }elseif($tableinfo['show_child_link_callback'] && is_callable($tableinfo['show_child_link_callback'])){
+              $link_text_func = $tableinfo['show_child_link_callback'];
+              $show_child_link_text = $link_text_func($child_url_vars,$child_url);
+            }else{
+              $show_child_link_text = "View/edit&nbsp;".$tableinfo['title'];
+            }
+
+
+            if($tableinfo['display_type'] == 'popup'){
 
              $out[$keyval][$table.'child'] = "
-<div class=\"edit_child_cell_inactive\" onClick=\"show_child_grid_popup('$child_url')\">View/edit ".$tableinfo['title'].'</div>';
+<div class=\"edit_child_cell_inactive\" onClick=\"show_child_grid_popup('$child_url')\">$show_child_link_text</div>";
 
-          }elseif($tableinfo['display_type'] == 'iframe'){
+            }elseif($tableinfo['display_type'] == 'iframe'){
 
               $out[$keyval][$table.'child'] = '
 <div class="edit_child_cell_inactive" id="child_grid_link_cell_'.$table.'_'.$link_value.'">
-<span id="show_child_grid_'.$table.'_'.$link_value.'" style="display:inline" onclick="javascript:show_child_grid(\''.$link_value.'\',\''.$table.'\',\''.$child_url.'\');">View/edit&nbsp;'.$tableinfo['title'].'</span>
+<span id="show_child_grid_'.$table.'_'.$link_value.'" style="display:inline" onclick="javascript:show_child_grid(\''.$link_value.'\',\''.$table.'\',\''.$child_url.'\');">'.$show_child_link_text.'</span>
 <span id="hide_child_grid_'.$table.'_'.$link_value.'" style="display:none"  onclick="javascript:show_child_grid(\''.$link_value.'\',\''.$table.'\');">Hide&nbsp;'.$tableinfo['title'].'</span>
 </div>
 ';
               $meta[$keyval]['before_next_row'] .= $this->show_child_grid($table,$link_value);
+            }
 
           }
         }

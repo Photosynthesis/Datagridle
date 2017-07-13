@@ -140,7 +140,7 @@ table.datagrid{
   width: 100%;
 }
 td.datafield{
-  padding: 3 8 3 8px;
+  padding: 3px 8px 3px 8px;
   border:1px solid #ddd;
   margin:0;
 }
@@ -203,6 +203,10 @@ a.hidefield{
   width: 400px;
 }
 
+#edit_form input[type=radio]{
+  width: 20px;
+}
+
 #edit_form textarea{
   width: 400px;
   height:200px;
@@ -228,6 +232,11 @@ a.hidefield{
 #edit_form .maxlength{
   font-size: 11px;
   font-style: italic;
+}
+
+/* Shift the non-floated TinyMCE down to avoid covering the field label */
+#edit_form .fielddiv .mce-tinymce{
+  margin-top: 30px;
 }
 
 div.fielddiv{
