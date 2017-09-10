@@ -497,6 +497,7 @@ color:#ffffff;
   margin: 0;
   font-family: inherit;
   font-size: inherit;
+  width: 100%;
 }
 
 .ajax-edit select option, .ajax-edit select{
