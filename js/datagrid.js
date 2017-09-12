@@ -233,18 +233,16 @@ function ajaxEdit(parent_el,fid,id){
   }
 
 }
-
 function titleToUrl(inputFieldId,outputFileId){
     // when the the value of inputFieldId changes, convert it to a url-safe slug and spit it into outputFileId if(outputFileId is empty)else(confirm overwrite)
     // defult element ids: edit_title and edit_url
+    // function has to be call once the document is loaded eg. $('document').ready(function(){ // inside here })
 
     if(inputFieldId !== ""){
       var title_el = document.getElementById(inputFieldId);
     }
     if(title_el == null){
-      console.log('title_el is null. Defulting to edit_title');
       var title_el = document.getElementById('edit_title');
-      console.log(title_el);
     }
     if(outputFileId !== ""){
       var url_el = document.getElementById(inputFieldId);
@@ -260,7 +258,7 @@ function titleToUrl(inputFieldId,outputFileId){
         slug = title_el.value.trim().replace(/[ ]/g, '-').replace(/[^a-zA-Z0-9-_]/g, '').toLowerCase();
         console.log(slug);
          if(url_el.value !== ""){
-           if(confirm('Would you like to to update the url to: <b>'+slug+'</b>? \n(Changing an existing url could break inbound links.)')){
+           if(confirm('Would you like to to update the url to: '+slug+'? \n(Changing an existing url could break inbound links.)')){
             url_el.value = slug;
           }
         }else{
