@@ -137,67 +137,69 @@ function show_child_grid_popup(url,other_params){
 }
 
 
+var ajaxEdit_current_el = '';
 function ajaxEdit(parent_el,fid,id){
+
+  // if double click in same element, do not reload.
+  if(ajaxEdit_current_el == fid+id){
+    return;
+  }else{
+    ajaxEdit_current_el = fid+id;
+  }
 
   field = fields[fid];
   if(field.type.substr(0, 6) == 'select' || field.type.substr(0, 12) == 'staticselect'){
-      el = document.createElement('select');
+    el = document.createElement('select');
+    el.addEventListener ("change",ajaxSave, false);
+    options = field.options;
 
-      parent_el.parentElement.style.padding = 0;
-      el.style.width = parent_el.parentElement.offsetWidth;
-      el.style.height = parent_el.parentElement.offsetHeight;
-
-      el.name = field.name;
-      el.dataset.fid = fid;
-      el.dataset.rowId = id;
-
-      el.addEventListener ("change",ajaxSave, false);
-      options = field.options;
-      for (key in options) {
-        var opt = new Option(options[key],key);
-        el.options.add(opt);
-      }
-
-      el.value = parent_el.dataset.value;
-      parent_el.innerHTML = '';
-      parent_el.appendChild(el);
-      parent_el.parentElement.style.width = el.style.width;
+    for (key in options) {
+      var opt = new Option(options[key],key);
+      el.options.add(opt);
+    }
 
   }else if(field.type == 'textarea'){
     el = document.createElement('textarea');
-
     el.style.padding = parent_el.parentElement.style.padding;
-    parent_el.parentElement.style.padding = 0;
-    el.style.width = parent_el.parentElement.offsetWidth;
-    el.style.height = parent_el.parentElement.offsetHeight;
-
-    el.value = parent_el.dataset.value;
-    el.name = field.name;
-    el.dataset.fid = fid;
-    el.dataset.rowId = id;
     el.addEventListener ("blur",ajaxSave, false);
-    parent_el.innerHTML = '';
-    parent_el.appendChild(el);
-    parent_el.parentElement.style.width = el.style.width;
   }else{
     el = document.createElement('input');
     el.type = "text";
-    el.value = parent_el.dataset.value;
-
     el.style.padding = "3px 8px 3px 8px "; //parent_el.parentElement.style.padding;
-    parent_el.parentElement.style.padding = 0;
-    el.style.width = parent_el.parentElement.offsetWidth;
-    el.style.height = parent_el.parentElement.offsetHeight;
-
-    el.name = field.name;
-    el.dataset.fid = fid;
-    el.dataset.rowId = id;
     el.addEventListener ("blur",ajaxSave, false);
     el.onBlur = "ajaxSave(this)";
-    parent_el.innerHTML = '';
-    parent_el.appendChild(el);
-    parent_el.parentElement.style.width = el.style.width;
   }
+
+  el.value = parent_el.dataset.value;
+  el.name = field.name;
+  el.dataset.fid = fid;
+  el.dataset.rowId = id;
+  parent_el.parentElement.style.padding = 0;
+  el.style.width = parent_el.parentElement.offsetWidth;
+  el.style.height = parent_el.parentElement.offsetHeight;
+  parent_el.innerHTML = '';
+  parent_el.appendChild(el);
+  parent_el.parentElement.style.width = el.style.width;
+
+  el.focus();
+  
+  //abort on esecape key press
+  document.onkeydown = function(evt) {
+    evt = evt || window.event;
+    var isEscape = false;
+    if ("key" in evt) {
+        isEscape = (evt.key == "Escape" || evt.key == "Esc");
+    } else {
+        isEscape = (evt.keyCode == 27);
+    }
+    if (isEscape) {
+        $("#"+fid+rowId).html(parent_el.dataset.value);
+        ajaxEdit_current_el = '';
+        el.removeEventListener('blur', ajaxSave, false);
+        el.removeEventListener('change', ajaxSave, false);
+        return;
+    }
+  };
 
   function ajaxSave(triggerEvent){
     field_el = triggerEvent.target;
@@ -224,6 +226,7 @@ function ajaxEdit(parent_el,fid,id){
         displayValue = result.value;
       }
       $("#"+fid+rowId).html(displayValue);
+      ajaxEdit_current_el = '';
     });
 
     ajaxSaveReq.fail(function( jqXHR, textStatus ) {
