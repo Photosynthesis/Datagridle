@@ -182,7 +182,7 @@ function ajaxEdit(parent_el,fid,id){
   parent_el.parentElement.style.width = el.style.width;
 
   el.focus();
-  
+
   //abort on esecape key press
   document.onkeydown = function(evt) {
     evt = evt || window.event;
@@ -206,7 +206,7 @@ function ajaxEdit(parent_el,fid,id){
     fid = field_el.dataset.fid;
     rowId = field_el.dataset.rowId;
     parent_el = field_el.parentElement;
-    var params = gpfx+'action=ajax_save&'+gpfx+'fid=' + fid + '&'+gpfx+'value=' + field_el.value + '&'+gpfx+'id=' + rowId;
+    var params = gpfx+'action=ajax_save&'+gpfx+'fid=' + fid + '&'+gpfx+'value=' + escape(field_el.value) + '&'+gpfx+'id=' + rowId;
     parent_el.id = fid+rowId;
     parent_el.parentElement.style.padding = field_el.style.padding;
     parent_el.parentElement.style.width = "";
@@ -236,3 +236,4 @@ function ajaxEdit(parent_el,fid,id){
   }
 
 }
+
